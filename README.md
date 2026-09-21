@@ -258,7 +258,7 @@ The local Docker setup is a **demo** (sample passwords, database ports open, deb
 - **Website** on **Vercel** (free), built from the `frontend` folder.
 - **API** on an **Oracle Cloud "Always Free"** server, running Docker Compose behind **Caddy** (automatic HTTPS), with a free **DuckDNS** address.
 
-Step-by-step instructions, including the production settings template, are in **[`deploy/README.md`](deploy/README.md)**. Key points:
+Step-by-step instructions are in **[`deploy/README.md`](deploy/README.md)** (Oracle server) and, if you have **no credit card**, **[`deploy/HUGGINGFACE.md`](deploy/HUGGINGFACE.md)** (Vercel + a free Hugging Face Space + Neon + MongoDB Atlas + Brevo email). Key points:
 
 - The app **refuses to start** with `DEBUG=false` if `SECRET_KEY` is the placeholder or shorter than 32 characters.
 - Create your first Manager with `python create_manager.py` and **never run `seed.py` on a live server** (it deletes all data and refuses to run when `DEBUG=false`).

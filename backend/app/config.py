@@ -1,3 +1,5 @@
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
 from pydantic import field_validator
 from pydantic_settings import BaseSettings
 from typing import Optional
@@ -36,11 +38,22 @@ class Settings(BaseSettings):
     SMTP_FROM: str = "PropAI <no-reply@propai.local>"
     SMTP_STARTTLS: bool = True                     # STARTTLS on port 587
     SMTP_SSL: bool = False                         # implicit TLS on port 465
+    # Email over HTTPS instead of SMTP, for hosts that block the SMTP ports (free Hugging Face Spaces). When BREVO_API_KEY is set it is used
+    # instead of SMTP. SMTP_FROM must be a sender you verified in Brevo.
+    BREVO_API_KEY: str = ""
+    BREVO_API_URL: str = "https://api.brevo.com/v3/smtp/email"
     # Development only: with no SMTP configured, print codes in the server log instead of failing. Never enable in production.
     EMAIL_DEV_LOG_CODES: bool = False
 
     # File storage
     UPLOAD_DIR: str = "uploads"
+    # Keep a copy of every upload in MongoDB and restore it after a restart. For hosts with a disk that is wiped (free Hugging Face Spaces).
+    MIRROR_UPLOADS_TO_MONGO: bool = False
+
+    # First-Manager bootstrap for hosts with no shell (see services/bootstrap.py). Delete these after the first sign-in.
+    BOOTSTRAP_MANAGER_EMAIL: str = ""
+    BOOTSTRAP_MANAGER_NAME: str = "Manager"
+    BOOTSTRAP_MANAGER_PASSWORD: str = ""
     MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
 
     # OCR / NLP
@@ -70,7 +83,17 @@ class Settings(BaseSettings):
         # Hosting providers hand out postgres:// or postgresql://; the async engine needs the asyncpg driver named.
         for prefix in ("postgres://", "postgresql://"):
             if v.startswith(prefix):
-                return "postgresql+asyncpg://" + v[len(prefix):]
+                v = "postgresql+asyncpg://" + v[len(prefix):]
+                break
+        if v.startswith("postgresql+asyncpg://") and "?" in v:
+            # Neon / Supabase addresses end in ?sslmode=require&channel_binding=require, which asyncpg spells differently.
+            parts = urlsplit(v)
+            query = dict(parse_qsl(parts.query))
+            mode = query.pop("sslmode", None)
+            query.pop("channel_binding", None)
+            if mode and "ssl" not in query:
+                query["ssl"] = mode
+            v = urlunsplit(parts._replace(query=urlencode(query)))
         return v
 
     @property

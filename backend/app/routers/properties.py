@@ -6,6 +6,7 @@ from datetime import datetime
 import os, shutil
 
 from app.database import get_db, get_mongo_db
+from app.services import file_mirror
 from app.services.property_listings import generate_listings
 from app.models.property_model import Property
 from app.models.user import User, UserRole
@@ -330,6 +331,7 @@ async def upload_property_image(
     with open(filepath, "wb") as f:
         shutil.copyfileobj(file.file, f)
 
+    await file_mirror.save(filepath)
     prop.image_url = f"/uploads/properties/{filename}"
     await db.commit()
     await invalidate_pattern("properties:*")

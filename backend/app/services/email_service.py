@@ -1,8 +1,9 @@
 """
 Outgoing email for one-time codes.
 
-With SMTP_HOST configured the message is sent over SMTP (STARTTLS on 587, or implicit TLS with SMTP_SSL=true).
-With SMTP_HOST empty nothing is sent and the sign-up screen says so. For development only, EMAIL_DEV_LOG_CODES=true writes the
+With BREVO_API_KEY configured the message is sent through Brevo's HTTPS API (for hosts that block SMTP, e.g. free Hugging Face Spaces).
+Otherwise, with SMTP_HOST configured it is sent over SMTP (STARTTLS on 587, or implicit TLS with SMTP_SSL=true).
+With neither configured nothing is sent and the sign-up screen says so. For development only, EMAIL_DEV_LOG_CODES=true writes the
 code to the server log instead; never enable that in production, since anyone with log access could read codes.
 """
 import asyncio
@@ -10,7 +11,10 @@ import logging
 import smtplib
 import ssl
 from email.message import EmailMessage
+from email.utils import parseaddr
 from html import escape
+
+import httpx
 
 from app.config import settings
 
@@ -21,9 +25,34 @@ def smtp_configured() -> bool:
     return bool(settings.SMTP_HOST.strip())
 
 
+def brevo_configured() -> bool:
+    return bool(settings.BREVO_API_KEY.strip())
+
+
 def email_delivery_available() -> bool:
     """False when codes can neither be emailed nor (dev only) logged - i.e. the server's mail settings are missing."""
-    return smtp_configured() or settings.EMAIL_DEV_LOG_CODES
+    return brevo_configured() or smtp_configured() or settings.EMAIL_DEV_LOG_CODES
+
+
+async def _send_brevo(message: EmailMessage) -> None:
+    """POST the message to Brevo's transactional-email API (plain HTTPS, so no SMTP port is needed). Raises on any failure."""
+    name, address = parseaddr(str(message["From"]))
+    html = message.get_body(preferencelist=("html",))
+    text = message.get_body(preferencelist=("plain",))
+    payload = {
+        "sender": {"name": name or "PropAI", "email": address},
+        "to": [{"email": str(message["To"])}],
+        "subject": str(message["Subject"]),
+        "htmlContent": html.get_content() if html else None,
+        "textContent": text.get_content() if text else None,
+    }
+    async with httpx.AsyncClient(timeout=15) as client:
+        response = await client.post(
+            settings.BREVO_API_URL, json={k: v for k, v in payload.items() if v is not None},
+            headers={"api-key": settings.BREVO_API_KEY.strip(), "accept": "application/json"},
+        )
+    if response.status_code >= 300:
+        raise RuntimeError(f"Brevo answered {response.status_code}: {response.text[:200]}")
 
 
 def _send_sync(message: EmailMessage) -> None:
@@ -76,7 +105,7 @@ def build_otp_message(to: str, name: str, code: str, ttl_minutes: int, purpose: 
 
 async def send_otp_email(to: str, name: str, code: str, purpose: str = "verify") -> bool:
     """True when the code was handed to a mail server (or, in dev mode, written to the log); False if delivery failed."""
-    if not smtp_configured():
+    if not smtp_configured() and not brevo_configured():
         if settings.EMAIL_DEV_LOG_CODES:
             label = "password reset code" if purpose == "reset" else "verification code"
             logger.warning("[DEMO EMAIL - SMTP not configured] %s for %s is %s", label, to, code)
@@ -85,7 +114,10 @@ async def send_otp_email(to: str, name: str, code: str, purpose: str = "verify")
         return False
     message = build_otp_message(to, name, code, settings.OTP_TTL_SECONDS // 60, purpose)
     try:
-        await asyncio.to_thread(_send_sync, message)
+        if brevo_configured():
+            await _send_brevo(message)
+        else:
+            await asyncio.to_thread(_send_sync, message)
         logger.info("%s email sent to %s", "Password reset" if purpose == "reset" else "Verification", to)
         return True
     except Exception as exc:                      # never let a mail outage break the request; the user can resend

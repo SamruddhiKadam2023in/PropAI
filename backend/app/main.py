@@ -1,11 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+import faulthandler
 import logging
 import os
+import signal
 
 from app.config import settings
 from app.database import create_tables, connect_databases, disconnect_databases
+from app.services import file_mirror
+from app.services.bootstrap import ensure_bootstrap_manager
 from app.routers import auth, properties, documents, financial, analytics, reports
 from app.routers import notifications, messages, config as config_router, maintenance, service_providers, agreements
 
@@ -14,6 +18,11 @@ logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+try:                                   # diagnostics: `kill -USR1 <pid>` prints what every thread is doing (find a stuck job)
+    faulthandler.register(signal.SIGUSR1, all_threads=True)
+except (AttributeError, ValueError, OSError):
+    pass
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -70,6 +79,8 @@ async def startup():
             logger.warning("Only localhost may call this API. Set FRONTEND_URL to the website's address.")
     await connect_databases()
     await create_tables()
+    await file_mirror.restore_all()
+    await ensure_bootstrap_manager()
     logger.info(f"{settings.APP_NAME} ready.")
 
 
@@ -79,7 +90,12 @@ async def shutdown():
     logger.info("Shutdown complete.")
 
 
-# ── Health check ──────────────────────────────────────────────────────────────
+# ── Root + health check ──────────────────────────────────────────────────────────────
+@app.get("/", include_in_schema=False)
+async def root():
+    return {"app": settings.APP_NAME, "status": "ok", "docs": "/docs"}
+
+
 @app.get("/health", tags=["Health"])
 async def health():
     return {"status": "ok", "app": settings.APP_NAME}

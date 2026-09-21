@@ -24,7 +24,7 @@ COMPOSE = ["docker", "compose", "-f", "docker-compose.yml"]
 TEST_OVERRIDE = os.path.join("tests", "docker-compose.test.yml")
 
 API_MAIN = ["auth_api_tests", "auth_reset_tests", "account_api_tests", "abandon_api_tests", "approve_auth_tests", "expense_auth_tests",
-            "maint_regression_tests", "tenant_api_tests", "providers_dir_api_tests", "ocr_bills_tests"]
+            "maint_regression_tests", "tenant_api_tests", "providers_dir_api_tests", "ocr_bills_tests", "file_mirror_tests"]
 API_SEED = ["api_tests", "payments_api_tests", "rent_dates_api_tests", "export_api_tests"]
 UI_MAIN = ["ui_auth", "ui_reset", "ui_account", "ui_tenant", "ui_abandon", "ui_dirs", "ui_export", "ui_mgr_ocr", "ui_ocr_card", "ui_demo_restore", "prod_bundle_check"]
 UI_SWEEPS = [("reg_sweep api", ["reg_sweep.mjs", "api"]), ("reg_sweep guards", ["reg_sweep.mjs", "guards"]),
@@ -108,6 +108,9 @@ def main():
             if match("smtp_sender_test"):
                 results.append(run("smtp_sender_test", ["docker", "exec", "-i", "property_backend", "python", "-"], HERE,
                                    stdin_path=os.path.join(HERE, "api", "smtp_sender_test.py")))
+            if match("hosting_unit"):
+                results.append(run("hosting_unit", ["docker", "exec", "-i", "property_backend", "python", "-"], HERE,
+                                   stdin_path=os.path.join(HERE, "api", "hosting_unit.py")))
             if match("ocr_extractor_unit"):
                 subprocess.run(["docker", "cp", os.path.join(HERE, "assets", "bills"), "property_backend:/tmp/bills"],
                                capture_output=True, env={**os.environ, "MSYS_NO_PATHCONV": "1"})
@@ -119,6 +122,9 @@ def main():
                 if match(n):
                     results.append(run(n, ["node"] + argv, os.path.join(HERE, "ui")))
     finally:
+        # Test mode mirrors uploads into MongoDB; suites that clean up with SQL leave those copies behind, so empty the collection.
+        subprocess.run(["docker", "exec", "property_mongodb", "mongosh", "-u", "mongo", "-p", "mongo123", "--authenticationDatabase", "admin",
+                        "property_management", "--quiet", "--eval", "db.file_mirror.deleteMany({})"], capture_output=True, env={**os.environ, "MSYS_NO_PATHCONV": "1"})
         if not args.keep_test_mode:
             print("\nRestoring normal mode (real email settings from backend/.env) ...")
             compose("up", "-d", "--force-recreate", "backend")

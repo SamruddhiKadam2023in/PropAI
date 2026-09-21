@@ -12,6 +12,7 @@ from app.database import get_db
 from app.models.document import Document, DocumentStatus, DocumentType
 from app.models.property_model import Property
 from app.models.user import User, UserRole
+from app.services import file_mirror
 from app.schemas.document import DocumentCorrection, DocumentResponse
 from app.services.ocr_service import (
     STARTED_KEY, mime_for_path, process_document_background, processing_marker,
@@ -135,6 +136,7 @@ async def upload_document(
 ):
     linked_property = await _resolve_property(db, current_user, property_id)
     stored_path, display_name, _mime, _size = await save_upload(file, current_user.id)
+    await file_mirror.save(stored_path)
 
     doc = Document(
         filename=display_name,
@@ -281,6 +283,8 @@ async def delete_document(
     if doc is None or (doc.user_id != current_user.id and current_user.role != UserRole.MANAGER):
         raise HTTPException(status_code=404, detail="Document not found")
 
-    remove_file(resolve_stored_path(doc.file_url))
+    stored = resolve_stored_path(doc.file_url)
+    remove_file(stored)
+    await file_mirror.delete(stored)
     await db.delete(doc)
     await db.commit()

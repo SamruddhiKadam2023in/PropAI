@@ -1,3 +1,6 @@
+> **No credit card?** Use **[HUGGINGFACE.md](HUGGINGFACE.md)** instead (Vercel + a free Hugging Face Space + Neon + Atlas + Brevo).
+> This page is the Oracle Cloud route, which needs a card for identity checks but gives an always-on server.
+
 # Deploying PropAI for free: Vercel (website) + Oracle Cloud "Always Free" (API)
 
 ```

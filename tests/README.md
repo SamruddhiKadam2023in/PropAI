@@ -272,6 +272,10 @@ Once the backend is running, open either of these in your browser:
 | Swagger UI | http://localhost:8000/docs |
 | ReDoc | http://localhost:8000/redoc |
 
+### Hosting features
+
+`api/hosting_unit.py` (runs inside the backend container) covers Neon-style database addresses, the MongoDB copy of uploaded files, the first-Manager bootstrap and email over HTTPS (against a fake Brevo server). `api/file_mirror_tests.py` proves an uploaded bill survives the disk being wiped and the API restarted. Test mode turns the file copy on; `run_all.py` empties it afterwards.
+
 ---
 
 ## 📄 License

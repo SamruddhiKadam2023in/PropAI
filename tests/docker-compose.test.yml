@@ -6,3 +6,4 @@ services:
     environment:
       SMTP_HOST: ""
       EMAIL_DEV_LOG_CODES: "true"
+      MIRROR_UPLOADS_TO_MONGO: "true"      # so the file-mirror tests (and every other test) run with the hosted-mode file copy on
