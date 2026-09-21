@@ -1,0 +1,21 @@
+# API-only server: the website lives on Vercel (or elsewhere) and calls this server at https://DOMAIN/api .
+# Caddy gets and renews the HTTPS certificate by itself (Let's Encrypt) for whatever DOMAIN is set to.
+{$DOMAIN} {
+	encode gzip
+
+	# /api/... -> the FastAPI backend (the /api prefix is removed before it arrives)
+	handle_path /api/* {
+		reverse_proxy backend:8000
+	}
+
+	# anyone opening the bare address is sent to the website
+	handle {
+		redir {$WEBSITE_URL:https://example.com} 302
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+}

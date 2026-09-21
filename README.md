@@ -196,7 +196,7 @@ For production, update these values:
 | `SECRET_KEY` | A long random secret string |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USERNAME` / `SMTP_PASSWORD` / `SMTP_FROM` | Outgoing email for one-time codes |
 | `DEBUG` | Set to `false` (`true` prints every SQL statement, including password hashes, in the logs) |
-| `ALLOWED_ORIGINS` | The real address of your frontend |
+| `FRONTEND_URL` | The website's address (the only origin allowed to call the API) |
 | `CONFIDENCE_THRESHOLD` | Minimum OCR confidence (default `0.65`) |
 
 The **Quick Demo Login** panel on the Login page is shown only when `frontend/.env` contains `VITE_SHOW_DEMO_LOGIN=true` (copy `frontend/.env.example` to `frontend/.env` for a local demo). **Public builds must not set it** — without it, the build contains no panel and no demo password.
@@ -248,6 +248,22 @@ docker compose up -d --force-recreate backend
 ```
 
 **Known limits:** very low-resolution photos are flagged instead of read; the place list in `backend/app/ml/india_places.py` covers major cities and suburbs and can be extended.
+
+---
+
+## 🚢 Deploying for Free
+
+The local Docker setup is a **demo** (sample passwords, database ports open, debug on). For a real, always-on site the recommended free setup is:
+
+- **Website** on **Vercel** (free), built from the `frontend` folder.
+- **API** on an **Oracle Cloud "Always Free"** server, running Docker Compose behind **Caddy** (automatic HTTPS), with a free **DuckDNS** address.
+
+Step-by-step instructions, including the production settings template, are in **[`deploy/README.md`](deploy/README.md)**. Key points:
+
+- The app **refuses to start** with `DEBUG=false` if `SECRET_KEY` is the placeholder or shorter than 32 characters.
+- Create your first Manager with `python create_manager.py` and **never run `seed.py` on a live server** (it deletes all data and refuses to run when `DEBUG=false`).
+- Keep every secret (SMTP app password, `SECRET_KEY`, database passwords) only in the host's environment or `deploy/.env` — never in chat, git or screenshots. If one leaks, revoke it and create a new one.
+- Dependencies were upgraded for known security advisories; re-check with `pip-audit` (backend) and `npm audit --omit=dev` (frontend).
 
 ---
 

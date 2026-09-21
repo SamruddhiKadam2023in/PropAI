@@ -4,7 +4,10 @@
 #   cd deploy && cp .env.example .env      (fill in every value)
 #   docker compose up -d --build
 #
-# The website is served at https://$DOMAIN and the API at https://$DOMAIN/api (same address, so no CORS trouble).
+# Two ways to run it (set in deploy/.env, see .env.example):
+#   * API only (website on Vercel):  CADDYFILE=./Caddyfile.api-only  WEBSITE_URL=https://your-site.vercel.app   (default)
+#   * Everything on this server:     CADDYFILE=./Caddyfile  COMPOSE_PROFILES=website   (website at https://$DOMAIN)
+# The API is always at https://$DOMAIN/api .
 name: propai
 
 services:
@@ -16,15 +19,16 @@ services:
       - "443:443"
     environment:
       DOMAIN: ${DOMAIN}
+      WEBSITE_URL: ${WEBSITE_URL:-https://example.com}
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${CADDYFILE:-./Caddyfile.api-only}:/etc/caddy/Caddyfile:ro
       - caddy_data:/data           # keeps the HTTPS certificates between restarts
       - caddy_config:/config
     depends_on:
       - backend
-      - frontend
 
   frontend:
+    profiles: ["website"]          # only built/started when COMPOSE_PROFILES=website
     build:
       context: ../frontend
       args:
@@ -48,7 +52,7 @@ services:
       REFRESH_TOKEN_EXPIRE_DAYS: "7"
       DEBUG: "false"
       EMAIL_DEV_LOG_CODES: "false"
-      FRONTEND_URL: https://${DOMAIN}
+      FRONTEND_URL: ${WEBSITE_URL:-https://${DOMAIN}}          # the website's address: the only origin allowed to call the API
       UPLOAD_DIR: uploads
       MAX_FILE_SIZE: "10485760"
       CONFIDENCE_THRESHOLD: "0.65"
