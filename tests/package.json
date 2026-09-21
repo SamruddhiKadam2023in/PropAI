@@ -1,0 +1,9 @@
+{
+  "name": "propai-tests",
+  "private": true,
+  "description": "End-to-end and API regression tests for PropAI",
+  "type": "module",
+  "dependencies": {
+    "playwright-core": "1.63.0"
+  }
+}

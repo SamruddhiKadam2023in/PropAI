@@ -1,0 +1,114 @@
+# PRODUCTION stack for a single server (Oracle Cloud Always Free, or any Linux VM with Docker).
+# Only Caddy (ports 80/443) is reachable from the internet. Databases, Redis and the API stay on the private Docker network.
+#
+#   cd deploy && cp .env.example .env      (fill in every value)
+#   docker compose up -d --build
+#
+# The website is served at https://$DOMAIN and the API at https://$DOMAIN/api (same address, so no CORS trouble).
+name: propai
+
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data           # keeps the HTTPS certificates between restarts
+      - caddy_config:/config
+    depends_on:
+      - backend
+      - frontend
+
+  frontend:
+    build:
+      context: ../frontend
+      args:
+        VITE_API_URL: https://${DOMAIN}/api
+        VITE_SHOW_DEMO_LOGIN: "false"     # a public build never has the demo-login panel, even if a local frontend/.env sets it
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ../backend
+    restart: unless-stopped
+    # --proxy-headers: Caddy tells the API the visitor's real address (the login limiter needs it). Safe because port 8000
+    # is not published: only Caddy can reach it.
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips=*"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://propai:${POSTGRES_PASSWORD}@postgres:5432/property_management
+      MONGODB_URL: mongodb://propai:${MONGO_PASSWORD}@mongodb:27017
+      REDIS_URL: redis://redis:6379
+      SECRET_KEY: ${SECRET_KEY}
+      ACCESS_TOKEN_EXPIRE_MINUTES: "15"
+      REFRESH_TOKEN_EXPIRE_DAYS: "7"
+      DEBUG: "false"
+      EMAIL_DEV_LOG_CODES: "false"
+      FRONTEND_URL: https://${DOMAIN}
+      UPLOAD_DIR: uploads
+      MAX_FILE_SIZE: "10485760"
+      CONFIDENCE_THRESHOLD: "0.65"
+      APP_NAME: AI Property Management
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM: ${SMTP_FROM}
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_started
+      redis:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=4)"]
+      interval: 20s
+      timeout: 6s
+      retries: 6
+      start_period: 40s
+
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: property_management
+      POSTGRES_USER: propai
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U propai -d property_management"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  mongodb:
+    image: mongo:6-jammy
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: propai
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+    volumes:
+      - mongo_data:/data/db
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+
+volumes:
+  caddy_data:
+  caddy_config:
+  postgres_data:
+  mongo_data:
+  redis_data:
+  uploads_data:

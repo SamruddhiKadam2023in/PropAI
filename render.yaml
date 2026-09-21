@@ -1,0 +1,97 @@
+# Render blueprint for PropAI:  Dashboard -> New -> Blueprint -> pick this repo.
+# Everything marked "sync: false" is asked for once in the Render dashboard (never put secrets in this file).
+#
+# BEFORE you deploy:
+#   1. MongoDB: Render has none. Create a free cluster on MongoDB Atlas and paste its connection string into MONGODB_URL.
+#   2. Gmail app password (or another SMTP account) for the one-time codes -> SMTP_USERNAME / SMTP_PASSWORD / SMTP_FROM.
+#   3. After the first deploy, put the website's address into FRONTEND_URL (backend) - e.g. https://propai-web.onrender.com -
+#      and the backend's address into VITE_API_URL (website), then redeploy both. See "Deploying" in README.md.
+#   4. Create the first Manager (Render dashboard -> propai-backend -> Shell):  python create_manager.py you@example.com "Your Name"
+#      Do NOT run seed.py on a live site: it is demo data with a published password.
+
+services:
+  # ── API (FastAPI + Tesseract). Needs real memory: spaCy, OpenCV and scikit-learn do not fit in 512 MB. ──────────────
+  - type: web
+    name: propai-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: standard
+    healthCheckPath: /health
+    # Uploaded bills and property photos. Without a disk they are deleted on every redeploy. (Disks need a paid plan.)
+    disk:
+      name: propai-uploads
+      mountPath: /app/uploads
+      sizeGB: 5
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: propai-postgres
+          property: connectionString      # postgres://... is converted to the asyncpg form by the app
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: propai-redis
+          property: connectionString
+      - key: MONGODB_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true               # a long random value, created once
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "15"                       # short-lived; the refresh token renews it
+      - key: REFRESH_TOKEN_EXPIRE_DAYS
+        value: "7"
+      - key: UPLOAD_DIR
+        value: uploads
+      - key: MAX_FILE_SIZE
+        value: "10485760"
+      - key: CONFIDENCE_THRESHOLD
+        value: "0.65"
+      - key: APP_NAME
+        value: AI Property Management
+      - key: DEBUG
+        value: "false"                    # true would print every SQL statement (with password hashes) into the logs
+      - key: EMAIL_DEV_LOG_CODES
+        value: "false"                    # true would write one-time codes into the logs
+      - key: FRONTEND_URL
+        sync: false                       # the website's address, e.g. https://propai-web.onrender.com
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        sync: false                       # e.g. PropAI <your.address@gmail.com>
+
+  # ── Website (static files built from /frontend) ────────────────────────────────────────────────────────────────────
+  - type: web
+    name: propai-web
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        sync: false                       # the API's address, e.g. https://propai-backend.onrender.com  (no trailing slash)
+    routes:
+      - type: rewrite                     # single-page app: every path is served by index.html
+        source: /*
+        destination: /index.html
+
+  # ── Redis (rate limiting, one-time codes, refresh tokens) ──────────────────────────────────────────────────────────
+  - type: keyvalue
+    name: propai-redis
+    plan: starter
+    maxmemoryPolicy: noeviction           # never silently drop codes / sessions
+    ipAllowList: []                       # private network only
+
+databases:
+  - name: propai-postgres
+    databaseName: property_management
+    user: propai
+    plan: basic-256mb

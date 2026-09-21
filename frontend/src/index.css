@@ -1,0 +1,262 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ════════════════════════════════════════════════════════════════════════════
+   DESIGN TOKENS — single source of truth for light & dark themes.
+   Values are space-separated RGB triplets so Tailwind can apply opacity
+   (e.g. bg-accent/40). tailwind.config.js maps them to semantic utilities:
+     bg-page · bg-surface(-2/-3) · border-line(-strong) · text-fg(-muted/-subtle)
+     bg-accent · text-accent-text · bg-success-soft · text-danger-fg · …
+   Every text/background pair below is ≥ 4.5:1 (WCAG AA) except fg-subtle on
+   surface-3, which must not be used.
+   ════════════════════════════════════════════════════════════════════════════ */
+@layer base {
+  :root {
+    color-scheme: light;
+
+    /* surfaces */
+    --page: 248 250 252;
+    --surface: 255 255 255;
+    --surface-2: 241 245 249;
+    --surface-3: 226 232 240;
+    --line: 226 232 240;
+    --line-strong: 203 213 225;
+
+    /* text */
+    --fg: 15 23 42;
+    --fg-muted: 71 85 105;
+    --fg-subtle: 91 107 130;
+
+    /* brand accent */
+    --accent: 79 70 229;
+    --accent-hover: 67 56 202;
+    --accent-on: 255 255 255;
+    --accent-text: 67 56 202;
+    --accent-soft: 238 242 255;
+
+    /* status — solid fill / soft background / readable text */
+    --success: 4 120 87;   --success-hover: 6 95 70;    --success-soft: 209 250 229; --success-fg: 4 120 87;
+    --warning: 180 83 9;                                 --warning-soft: 254 243 199; --warning-fg: 146 64 14;
+    --danger: 220 38 38;   --danger-hover: 185 28 28;   --danger-soft: 254 226 226;  --danger-fg: 185 28 28;
+    --info: 37 99 235;                                   --info-soft: 219 234 254;    --info-fg: 29 78 216;
+    --violet: 124 58 237;                                --violet-soft: 237 233 254;  --violet-fg: 109 40 217;
+
+    /* coloured hero / stat surfaces (always carry white text) */
+    --tone-indigo-a: 67 56 202;   --tone-indigo-b: 55 48 163;
+    --tone-violet-a: 109 40 217;  --tone-violet-b: 91 33 182;
+    --tone-blue-a: 29 78 216;     --tone-blue-b: 30 64 175;
+    --tone-emerald-a: 4 120 87;   --tone-emerald-b: 6 95 70;
+    --tone-amber-a: 146 64 14;    --tone-amber-b: 120 53 15;
+    --tone-rose-a: 190 18 60;     --tone-rose-b: 159 18 57;
+    --tone-teal-a: 15 118 110;    --tone-teal-b: 17 94 89;
+    --tone-slate-a: 51 65 85;     --tone-slate-b: 30 41 59;
+
+    /* chart / data-viz series */
+    --series-electricity: 217 119 6;
+    --series-water: 37 99 235;
+    --series-gas: 220 38 38;
+    --series-internet: 124 58 237;
+    --series-maintenance: 71 85 105;
+
+    --overlay: 15 23 42;
+  }
+
+  .dark {
+    color-scheme: dark;
+
+    --page: 15 23 42;
+    --surface: 30 41 59;
+    --surface-2: 39 52 73;
+    --surface-3: 51 65 85;
+    --line: 51 65 85;
+    --line-strong: 71 85 105;
+
+    --fg: 241 245 249;
+    --fg-muted: 203 213 225;
+    --fg-subtle: 148 163 184;
+
+    --accent: 79 70 229;
+    --accent-hover: 88 90 235;
+    --accent-on: 255 255 255;
+    --accent-text: 199 210 254;
+    --accent-soft: 40 48 107;
+
+    --success: 4 120 87;   --success-hover: 5 150 105;  --success-soft: 18 55 44;   --success-fg: 110 231 183;
+    --warning: 180 83 9;                                 --warning-soft: 59 45 12;   --warning-fg: 252 211 77;
+    --danger: 220 38 38;   --danger-hover: 239 68 68;   --danger-soft: 63 29 38;    --danger-fg: 252 165 165;
+    --info: 37 99 235;                                   --info-soft: 23 44 82;      --info-fg: 147 197 253;
+    --violet: 124 58 237;                                --violet-soft: 47 34 88;    --violet-fg: 196 181 253;
+
+    --tone-indigo-a: 55 48 163;   --tone-indigo-b: 49 46 129;
+    --tone-violet-a: 91 33 182;   --tone-violet-b: 76 29 149;
+    --tone-blue-a: 30 64 175;     --tone-blue-b: 30 58 138;
+    --tone-emerald-a: 6 95 70;    --tone-emerald-b: 6 78 59;
+    --tone-amber-a: 120 53 15;    --tone-amber-b: 100 45 12;
+    --tone-rose-a: 159 18 57;     --tone-rose-b: 136 19 55;
+    --tone-teal-a: 17 94 89;      --tone-teal-b: 19 78 74;
+    --tone-slate-a: 51 65 85;     --tone-slate-b: 30 41 59;
+
+    --series-electricity: 251 191 36;
+    --series-water: 96 165 250;
+    --series-gas: 248 113 113;
+    --series-internet: 167 139 250;
+    --series-maintenance: 148 163 184;
+
+    --overlay: 2 6 23;
+  }
+
+  body {
+    @apply bg-page text-fg font-sans transition-colors duration-200;
+  }
+
+  /* native dropdown lists follow the theme */
+  select option { background-color: rgb(var(--surface)); color: rgb(var(--fg)); }
+}
+
+@layer components {
+  /* ── Buttons ── */
+  .btn-primary {
+    @apply bg-accent hover:bg-accent-hover text-accent-on font-semibold py-2.5 px-5 rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50;
+  }
+  .btn-secondary {
+    @apply bg-surface hover:bg-surface-2 text-fg font-semibold py-2.5 px-5 rounded-xl border border-line-strong transition-all text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50;
+  }
+  .btn-success {
+    @apply bg-success hover:bg-success-hover text-white font-semibold py-2.5 px-5 rounded-xl transition-all shadow-sm text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-success/50;
+  }
+  .btn-danger {
+    @apply bg-danger hover:bg-danger-hover text-white font-semibold py-2.5 px-5 rounded-xl transition-all text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-danger/50;
+  }
+  .btn-ghost {
+    @apply bg-transparent hover:bg-surface-2 text-fg-muted hover:text-fg font-medium py-2 px-4 rounded-lg transition-colors text-sm;
+  }
+
+  /* ── Cards ── */
+  .card {
+    @apply bg-surface rounded-2xl shadow-sm border border-line p-6;
+  }
+  .card-hover {
+    @apply bg-surface rounded-2xl shadow-sm border border-line p-0 hover:shadow-md hover:border-accent/40 transition-all;
+  }
+  .card-gradient {
+    @apply rounded-2xl p-6 text-white;
+  }
+
+  /* ── Coloured hero / stat surfaces — white text guaranteed readable ── */
+  .tone-indigo, .tone-violet, .tone-blue, .tone-emerald,
+  .tone-amber, .tone-rose, .tone-teal, .tone-slate { color: #fff; }
+  .tone-indigo  { background-image: linear-gradient(135deg, rgb(var(--tone-indigo-a)),  rgb(var(--tone-indigo-b)));  }
+  .tone-violet  { background-image: linear-gradient(135deg, rgb(var(--tone-violet-a)),  rgb(var(--tone-violet-b)));  }
+  .tone-blue    { background-image: linear-gradient(135deg, rgb(var(--tone-blue-a)),    rgb(var(--tone-blue-b)));    }
+  .tone-emerald { background-image: linear-gradient(135deg, rgb(var(--tone-emerald-a)), rgb(var(--tone-emerald-b))); }
+  .tone-amber   { background-image: linear-gradient(135deg, rgb(var(--tone-amber-a)),   rgb(var(--tone-amber-b)));   }
+  .tone-rose    { background-image: linear-gradient(135deg, rgb(var(--tone-rose-a)),    rgb(var(--tone-rose-b)));    }
+  .tone-teal    { background-image: linear-gradient(135deg, rgb(var(--tone-teal-a)),    rgb(var(--tone-teal-b)));    }
+  .tone-slate   { background-image: linear-gradient(135deg, rgb(var(--tone-slate-a)),   rgb(var(--tone-slate-b)));   }
+
+  /* ── Stat cards ── */
+  .stat-card {
+    @apply bg-surface rounded-2xl border border-line p-5 flex items-start gap-4 shadow-sm;
+  }
+  .stat-icon {
+    @apply w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0;
+  }
+
+  /* ── Form ── */
+  .input {
+    @apply w-full border border-line-strong rounded-xl px-4 py-2.5 text-sm text-fg bg-surface-2 focus:outline-none focus:ring-2 focus:ring-accent/60 focus:border-transparent focus:bg-surface transition-colors placeholder:text-fg-subtle disabled:opacity-60;
+  }
+  .input-white {
+    @apply w-full border border-line-strong rounded-xl px-4 py-2.5 text-sm text-fg bg-surface focus:outline-none focus:ring-2 focus:ring-accent/60 focus:border-transparent transition-colors placeholder:text-fg-subtle;
+  }
+  .label {
+    @apply block text-sm font-medium text-fg mb-1.5;
+  }
+
+  /* ── Badges ── */
+  .badge-green   { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-success-soft text-success-fg; }
+  .badge-red     { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-danger-soft text-danger-fg; }
+  .badge-yellow  { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-warning-soft text-warning-fg; }
+  .badge-blue    { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-info-soft text-info-fg; }
+  .badge-indigo  { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-accent-soft text-accent-text; }
+  .badge-gray    { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-surface-3 text-fg-muted; }
+  .badge-purple  { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-violet-soft text-violet-fg; }
+
+  /* ── Table ── */
+  .table-row {
+    @apply border-b border-line last:border-0 hover:bg-surface-2/70 transition-colors;
+  }
+  .table-cell {
+    @apply py-3 px-2 text-sm text-fg-muted;
+  }
+  .table-head {
+    @apply py-2.5 px-2 text-xs font-semibold text-fg-subtle uppercase tracking-wide;
+  }
+
+  /* ── Nav ── */
+  .nav-link {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors;
+  }
+  .nav-link-active {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-accent-text bg-accent-soft;
+  }
+
+  /* ── Section header ── */
+  .section-title {
+    @apply text-lg font-bold text-fg;
+  }
+  .section-subtitle {
+    @apply text-sm text-fg-subtle mt-0.5;
+  }
+
+  /* ── Divider ── */
+  .divider {
+    @apply border-t border-line my-4;
+  }
+
+  /* ── Progress bar ── */
+  .progress-bar {
+    @apply h-1.5 rounded-full bg-surface-3 overflow-hidden;
+  }
+  .progress-fill {
+    @apply h-full rounded-full transition-all;
+  }
+}
+
+/* ── Legacy dark-mode bridge ────────────────────────────────────────────────
+   Owner and Manager dashboards still use raw Tailwind gray/white utilities.
+   These rules re-map those utilities onto the tokens above while `.dark` is
+   active, so all three portals share one dark palette. Tenant pages use the
+   semantic utilities directly and do not depend on this block.
+   ──────────────────────────────────────────────────────────────────────────── */
+html.dark .text-gray-900,
+html.dark .text-gray-800  { color: rgb(var(--fg)); }
+html.dark .text-gray-700,
+html.dark .text-gray-600  { color: rgb(var(--fg-muted)); }
+html.dark .text-gray-500,
+html.dark .text-gray-400,
+html.dark .text-gray-300  { color: rgb(var(--fg-subtle)); }
+
+html.dark .bg-white       { background-color: rgb(var(--surface)); }
+html.dark .bg-slate-50    { background-color: rgb(var(--page)); }
+html.dark .bg-gray-50     { background-color: rgb(var(--surface-2)); }
+html.dark .bg-gray-100    { background-color: rgb(var(--surface-3)); }
+html.dark .bg-gray-200    { background-color: rgb(var(--line-strong)); }
+
+html.dark .border-gray-100 { border-color: rgb(var(--line)); }
+html.dark .border-gray-200 { border-color: rgb(var(--line)); }
+html.dark .border-gray-300 { border-color: rgb(var(--line-strong)); }
+
+html.dark .divide-gray-100 > * + * { border-color: rgb(var(--line)); }
+html.dark .divide-gray-200 > * + * { border-color: rgb(var(--line-strong)); }
+
+html.dark .shadow-sm  { box-shadow: 0 1px 2px 0 rgba(0,0,0,.4); }
+html.dark .shadow-md  { box-shadow: 0 4px 6px -1px rgba(0,0,0,.5); }
+html.dark .shadow-lg  { box-shadow: 0 10px 15px -3px rgba(0,0,0,.5); }
+
+/* Touch screens: buttons and icon buttons get a comfortable minimum size. Mouse layouts are unchanged. */
+@media (pointer: coarse) {
+  .btn-primary, .btn-secondary, .btn-success, .btn-danger, .btn-ghost, .tap { min-height: 2.5rem; }
+  button.p-1 { min-width: 2.5rem; min-height: 2.5rem; display: inline-flex; align-items: center; justify-content: center; }
+}

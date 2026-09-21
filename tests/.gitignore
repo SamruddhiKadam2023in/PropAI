@@ -1,0 +1,4 @@
+node_modules/
+.artifacts/
+ui/shots/
+__pycache__/

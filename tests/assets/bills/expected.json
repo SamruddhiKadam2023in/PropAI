@@ -1,0 +1,48 @@
+{
+ "msedcl_airoli": {
+  "core": {
+   "document_type": "electricity_bill",
+   "vendor": "MSEDCL",
+   "amount": 2480.0,
+   "date": "12-03-2024",
+   "due_date": "28-03-2024"
+  },
+  "address": {
+   "pincode": "400708",
+   "suburb": "Airoli",
+   "city": "Navi Mumbai",
+   "state": "Maharashtra",
+   "place": "FLAT NO-401",
+   "customer_name": "SUNIL RAMCHANDRA KULKARNI & SUMAN SUNIL KULKARNI"
+  }
+ },
+ "mcgm_water": {
+  "core": {
+   "document_type": "water_bill",
+   "vendor": "MCGM",
+   "amount": 1420.0,
+   "date": "11-03-2024",
+   "due_date": "10-04-2024",
+   "is_duplicate": true,
+   "bill_period": "09-02-2024 to 10-03-2024"
+  },
+  "address": {
+   "pincode": "400088",
+   "suburb": "Govandi",
+   "city": "Mumbai",
+   "state": "Maharashtra",
+   "place": "STATION ROAD"
+  }
+ },
+ "bses_delhi": {
+  "core": {
+   "document_type": "electricity_bill",
+   "vendor": "BSES Rajdhani"
+  },
+  "must_be_empty": [
+   "amount",
+   "pincode",
+   "place"
+  ]
+ }
+}

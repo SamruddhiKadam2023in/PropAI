@@ -1,0 +1,8 @@
+# Test mode for the backend: no real email is sent, and one-time codes are printed in the backend log so the tests can read them.
+# Used by tests/run_all.py:  docker compose -f docker-compose.yml -f tests/docker-compose.test.yml up -d --force-recreate backend
+# Restore normal mode afterwards with:  docker compose up -d --force-recreate backend
+services:
+  backend:
+    environment:
+      SMTP_HOST: ""
+      EMAIL_DEV_LOG_CODES: "true"

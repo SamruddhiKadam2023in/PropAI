@@ -1,0 +1,6 @@
+# Python packages the API tests need (run: pip install -r tests/requirements.txt)
+requests>=2.31
+openpyxl>=3.1
+pypdfium2>=4.30
+Pillow>=10.1
+reportlab>=4.0
