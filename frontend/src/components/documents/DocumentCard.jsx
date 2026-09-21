@@ -157,7 +157,9 @@ export default function DocumentCard({ doc, onView, onUpdate, onRemove }) {
               <p className="flex-1">
                 {data.low_resolution
                   ? `This picture is too small to read reliably (${data.image_width}px wide). Upload a sharper photo or scan (at least 1000px wide), or fill the details in yourself.`
-                  : 'Some details may be wrong or missing. Please check them against the original.'}{' '}
+                  : data.amount == null
+                    ? "The amount couldn't be confirmed automatically. Please check the details and enter the amount so this bill counts in your Cost Analysis."
+                    : 'Some details may be wrong or missing. Please check them against the original.'}{' '}
                 <button type="button" onClick={startEdit} className="font-semibold underline">Review &amp; correct</button>
               </p>
             </div>

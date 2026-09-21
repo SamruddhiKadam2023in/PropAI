@@ -25,6 +25,7 @@ from app.ml.bill_pipeline import analyze_bill
 from app.ml.nlp_pipeline import run_nlp_pipeline
 from app.ml.ocr_pipeline import run_ocr_pipeline
 from app.models.document import Document, DocumentStatus, DocumentType
+from app.services.expense_sync import sync_expense_for_document
 
 logger = logging.getLogger(__name__)
 
@@ -294,6 +295,10 @@ async def process_document_background(document_id: int, file_path: str) -> None:
             doc.document_type = doc_type
             doc.status = status
             doc.processed_at = _now()
+            try:
+                await sync_expense_for_document(db, doc)     # a bill read with type + amount + date becomes an expense on the tenant's property
+            except Exception:
+                logger.warning(f"Could not record the expense for document {document_id}", exc_info=True)
             await db.commit()
             user_id = doc.user_id
 

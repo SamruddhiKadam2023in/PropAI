@@ -13,6 +13,7 @@ from app.models.document import Document, DocumentStatus, DocumentType
 from app.models.property_model import Property
 from app.models.user import User, UserRole
 from app.services import file_mirror
+from app.services.expense_sync import remove_expense_for_document, sync_expense_for_document
 from app.schemas.document import DocumentCorrection, DocumentResponse
 from app.services.ocr_service import (
     STARTED_KEY, mime_for_path, process_document_background, processing_marker,
@@ -241,6 +242,7 @@ async def correct_document(
     doc.extracted_data = merged
     doc.status = DocumentStatus.COMPLETED
 
+    await sync_expense_for_document(db, doc)         # a corrected bill counts in the tenant's Cost Analysis
     await db.commit()
     await db.refresh(doc)
     return serialize(doc)
@@ -286,5 +288,6 @@ async def delete_document(
     stored = resolve_stored_path(doc.file_url)
     remove_file(stored)
     await file_mirror.delete(stored)
+    await remove_expense_for_document(db, doc.id)
     await db.delete(doc)
     await db.commit()

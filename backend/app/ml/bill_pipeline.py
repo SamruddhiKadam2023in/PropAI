@@ -84,7 +84,7 @@ def analyze_bill(path: str, budget_seconds: float = 60.0) -> Dict[str, Any]:
         "passes": len(ocr.passes),
         "pages": ocr.pages,
         "image_width": ocr.width,
-        "low_resolution": 0 < ocr.width < LOW_RESOLUTION_WIDTH and (core.get("amount") is None or core.get("date") is None),   # small AND the key fields were not found
+        "low_resolution": 0 < ocr.width < LOW_RESOLUTION_WIDTH and score < 0.45,       # small picture AND hardly anything could be read (a small picture that read fine is not blamed)
         "document_type": core.get("document_type"),
         "vendor": core.get("vendor"),
         "amount": core.get("amount"),
