@@ -58,6 +58,11 @@ class Settings(BaseSettings):
 
     # OCR / NLP
     CONFIDENCE_THRESHOLD: float = 0.65
+    # Lite mode for tiny hosts (512 MB RAM, a fraction of a CPU): one Tesseract pass at a time on a smaller picture, stopping as soon as the
+    # essentials are read, and no spaCy model. Slower to find every detail but fits in memory. The full reader stays the default.
+    OCR_LITE_MODE: bool = False
+    # Languages Tesseract reads, joined with '+'. 'eng+mar' reads English and Marathi bills; set 'eng' on a very slow host to skip Marathi.
+    OCR_LANGUAGES: str = "eng+mar"
 
     # Rent dates/months are calendar dates in this timezone (never derived from UTC)
     APP_TIMEZONE: str = "Asia/Kolkata"

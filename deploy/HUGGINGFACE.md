@@ -1,3 +1,5 @@
+> **Update (Sept 2026): Hugging Face now charges for Docker Spaces, so this route is no longer free.** Use **[FREE_HOST.md](FREE_HOST.md)** (Render/Koyeb free tier, lite reading mode). This page is kept for reference if you ever pay for a Space.
+
 # Deploying PropAI with NO credit card: Vercel + Hugging Face Space + Neon + MongoDB Atlas + Brevo
 
 ```

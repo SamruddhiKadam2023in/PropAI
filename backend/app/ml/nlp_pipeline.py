@@ -20,6 +20,9 @@ _nlp = None
 
 def _get_nlp():
     global _nlp
+    from app.config import settings
+    if settings.OCR_LITE_MODE:            # lite mode: no spaCy model (about 150 MB less memory); the rule-based readers do the work
+        return None
     if _nlp is None:
         try:
             import spacy

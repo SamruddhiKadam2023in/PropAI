@@ -12,7 +12,8 @@ import time
 from typing import Any, Dict, List
 
 from app.ml.address_extractor import extract_address
-from app.ml.bill_extractor import core_is_sufficient, extract_core
+from app.config import settings
+from app.ml.bill_extractor import core_is_sufficient, core_is_sufficient_lite, extract_core
 from app.ml.hybrid_ocr import Line, run_hybrid_ocr
 
 logger = logging.getLogger(__name__)
@@ -66,10 +67,12 @@ def extraction_score(core: Dict[str, Any], address: Dict[str, Any]) -> float:
 
 def analyze_bill(path: str, budget_seconds: float = 60.0) -> Dict[str, Any]:
     started = time.time()
-    ocr = run_hybrid_ocr(path, budget_seconds=budget_seconds, sufficient=core_is_sufficient)
+    ocr = run_hybrid_ocr(path, budget_seconds=budget_seconds, sufficient=core_is_sufficient_lite if settings.OCR_LITE_MODE else core_is_sufficient)
     if not ocr.lines:
         return {"error": ocr.error or "No text was read.", "text": "", "ocr_confidence": 0.0, "ocr_engine": f"hybrid({ocr.languages})"}
     core = extract_core(ocr.lines)
+    if settings.OCR_LITE_MODE and core.get("amount") is not None and (core.get("amount_votes", 0) < 2 or not core.get("amount_label")):
+        core["amount"], core["amount_label"] = None, None      # lite mode: a single or unlabelled reading could be a misread digit or a stray number, so leave it for the user to confirm
     address = extract_address(ocr.lines)
     score = extraction_score(core, address)
     result = {
@@ -94,7 +97,7 @@ def analyze_bill(path: str, budget_seconds: float = 60.0) -> Dict[str, Any]:
         "address": {k: address.get(k) for k in ("place", "suburb", "city", "state", "pincode")},
         "customer_name": address.get("customer_name"),
         "extraction_score": score,
-        "confidence": round(0.3 * ocr.confidence + 0.7 * score, 4),
+        "confidence": round(min(0.3 * ocr.confidence + 0.7 * score, 0.5) if core.get("amount") is None else 0.3 * ocr.confidence + 0.7 * score, 4),   # no amount = needs a human look
         "seconds": round(time.time() - started, 1),
     }
     logger.info("Hybrid OCR: %s | type=%s amount=%s date=%s pin=%s | conf=%.2f | %.1fs (%s passes)", ocr.languages, result["document_type"], result["amount"],

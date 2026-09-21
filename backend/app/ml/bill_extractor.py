@@ -397,6 +397,16 @@ def extract_core(lines: List[Line]) -> Dict[str, Any]:
     }
 
 
+def core_is_sufficient_lite(lines: List[Line]) -> bool:
+    """Lite mode reads one pass at a time, so 'three passes agree' is too much: a LABELLED amount seen twice (a misread digit is rarely repeated) and a labelled bill date are enough."""
+    try:
+        core = extract_core(lines)
+    except Exception:
+        return False
+    return bool(core["document_type"] and core["amount"] is not None and core.get("amount_label") and core.get("amount_votes", 0) >= 2
+                and core["date"] and core["date_basis"] == "bill date label")
+
+
 def core_is_sufficient(lines: List[Line]) -> bool:
     """Used by the OCR engine to stop reading as soon as the essentials are clearly there."""
     try:

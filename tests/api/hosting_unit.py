@@ -1,12 +1,13 @@
 """Unit tests for the hosting features: Neon-style database addresses, the MongoDB copy of uploads, and the first-Manager bootstrap.
 
-Runs INSIDE the backend container (it imports app.*):
+Runs INSIDE the backend container (it imports app.*; the sample bills must be in /tmp/bills, see run_all.py):
     docker exec -i property_backend python - < tests/api/hosting_unit.py
 tests/run_all.py does this for you. Uses a throw-away Postgres database and a unique file key; both are removed.
 """
 import asyncio
 import os
 import sys
+import time
 import uuid
 from urllib.parse import urlsplit
 
@@ -203,6 +204,36 @@ async def email_tests():
 
 asyncio.run(email_tests())
 server.shutdown()
+
+print("== 5. Lite mode (tiny free hosts) and OCR languages ==")
+from app.ml import nlp_pipeline  # noqa: E402
+from app.ml.bill_pipeline import analyze_bill  # noqa: E402
+from app.ml.hybrid_ocr import language_string  # noqa: E402
+
+check("lite mode is OFF by default (the full reader is the default)", Settings().OCR_LITE_MODE is False)
+check("default languages are English + Marathi", Settings().OCR_LANGUAGES == "eng+mar" and language_string() == "eng+mar", language_string())
+keep_langs = settings.OCR_LANGUAGES
+settings.OCR_LANGUAGES = "eng"
+check("OCR_LANGUAGES=eng turns Marathi off without deleting anything", language_string() == "eng")
+settings.OCR_LANGUAGES = "eng+xyz"
+check("a language pack that is not installed is ignored, never passed to Tesseract", language_string() == "eng")
+settings.OCR_LANGUAGES = keep_langs
+
+settings.OCR_LITE_MODE = True
+try:
+    check("lite mode does not load the spaCy model", nlp_pipeline._get_nlp() is None)
+    t0 = time.time()
+    r = analyze_bill("/tmp/bills/msedcl_airoli.png", budget_seconds=120)
+    dt = time.time() - t0
+    check("lite mode reads the Marathi + English bill with at most 3 single passes", r["error"] is None and 1 <= r["passes"] <= 3, r["passes"])
+    check("...and still finds type, vendor and the PIN address", r["document_type"] == "electricity_bill" and r["vendor"] == "MSEDCL" and r["address"]["pincode"] == "400708", (r["document_type"], r["vendor"], r["address"]["pincode"]))
+    check("...and it never shows a doubtful amount: the right one (2480.0) or empty, never a misread", r["amount"] in (None, 2480.0), r["amount"])
+    check("a bill with no amount gets a confidence below the auto-accept level (needs review)", r["amount"] is not None or r["confidence"] <= 0.5, r["confidence"])
+    check("lite reading finishes well inside the free host's time limit", dt < 120, f"{dt:.0f}s")
+    r2 = analyze_bill("/tmp/bills/bses_delhi.png", budget_seconds=120)
+    check("an unreadable picture stays empty in lite mode too (no invented amount or address)", r2["amount"] is None and r2["address"]["place"] is None, (r2["amount"], r2["address"]["place"]))
+finally:
+    settings.OCR_LITE_MODE = False
 
 print(f"\n{sum(results)}/{len(results)} passed")
 sys.exit(0 if all(results) else 1)

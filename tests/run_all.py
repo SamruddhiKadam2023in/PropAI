@@ -108,12 +108,13 @@ def main():
             if match("smtp_sender_test"):
                 results.append(run("smtp_sender_test", ["docker", "exec", "-i", "property_backend", "python", "-"], HERE,
                                    stdin_path=os.path.join(HERE, "api", "smtp_sender_test.py")))
+            if match("hosting_unit") or match("ocr_extractor_unit"):
+                subprocess.run(["docker", "cp", os.path.join(HERE, "assets", "bills"), "property_backend:/tmp/bills"],
+                               capture_output=True, env={**os.environ, "MSYS_NO_PATHCONV": "1"})
             if match("hosting_unit"):
                 results.append(run("hosting_unit", ["docker", "exec", "-i", "property_backend", "python", "-"], HERE,
                                    stdin_path=os.path.join(HERE, "api", "hosting_unit.py")))
             if match("ocr_extractor_unit"):
-                subprocess.run(["docker", "cp", os.path.join(HERE, "assets", "bills"), "property_backend:/tmp/bills"],
-                               capture_output=True, env={**os.environ, "MSYS_NO_PATHCONV": "1"})
                 results.append(run("ocr_extractor_unit", ["docker", "exec", "-i", "property_backend", "python", "-"], HERE,
                                    stdin_path=os.path.join(HERE, "api", "ocr_extractor_unit.py")))
         if not args.api_only:

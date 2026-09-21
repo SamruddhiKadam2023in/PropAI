@@ -1,0 +1,35 @@
+# PropAI API for FREE hosts with 512 MB of memory and a tiny CPU share (Render free web service, Koyeb free instance).
+# Differences from the normal Dockerfile: LITE reading mode (one Tesseract pass at a time, no spaCy model), a small Redis inside the
+# container, uploads mirrored into MongoDB (these hosts wipe the disk on every restart), and the port comes from $PORT.
+FROM python:3.11-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tesseract-ocr tesseract-ocr-eng tesseract-ocr-mar libglib2.0-0 redis-server \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir --upgrade pip setuptools
+RUN useradd -m -u 1000 user
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+RUN printf '#!/bin/sh\nredis-server --port 6379 --bind 127.0.0.1 --save "" --appendonly no --daemonize yes\nexec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips="*"\n' > /app/start.sh \
+    && chmod +x /app/start.sh && mkdir -p /app/uploads && chown -R user:user /app
+
+# Non-secret defaults. Secrets (DATABASE_URL, MONGODB_URL, SECRET_KEY, BREVO_API_KEY ...) are set in the host's dashboard.
+ENV REDIS_URL=redis://127.0.0.1:6379 \
+    DEBUG=false \
+    EMAIL_DEV_LOG_CODES=false \
+    OCR_LITE_MODE=true \
+    MIRROR_UPLOADS_TO_MONGO=true \
+    UPLOAD_DIR=uploads \
+    ACCESS_TOKEN_EXPIRE_MINUTES=15 \
+    REFRESH_TOKEN_EXPIRE_DAYS=7 \
+    PYTHONUNBUFFERED=1
+
+USER user
+EXPOSE 8000
+CMD ["/app/start.sh"]

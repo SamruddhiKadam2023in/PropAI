@@ -386,13 +386,15 @@ try {
   await A.page.waitForURL('**/tenant/notifications', { timeout: 5000 })
   check('D5 "View all notifications" opens the Notifications page', true)
 
+  // the page marks rows read BEFORE the server answers (optimistic), so wait for the server's own count instead of asking once
+  const serverUnreadIsZero = async (who) => { for (let i = 0; i < 20; i++) { if ((await call(who, 'GET', '/notifications/unread-count')).json.count === 0) return true; await new Promise((r) => setTimeout(r, 250)) } return false }
   // mark all read (Sneha, restored afterwards)
   mongo(`d.notifications.insertMany([${mk(6, 'rent_due', 'Rent Due Reminder', 'QA reminder A', new Date().toISOString())}, ${mk(6, 'maintenance', 'Maintenance request received', 'QA confirm B', new Date().toISOString())}])`)
   await S.page.goto(`${BASE}/tenant/notifications`, { waitUntil: 'networkidle' })
   check('D6 Sneha sees only HER notifications (none of Amit\'s)', !(await S.page.locator('body').innerText()).includes('Unknown event') && (await S.page.locator('body').innerText()).includes('QA reminder A'))
   await S.page.getByRole('button', { name: /Mark all as read/ }).click()
   await S.page.getByText("You're all caught up.").waitFor({ timeout: 5000 })
-  check('D6 "Mark all as read" clears every unread notification', (await S.page.locator('[data-testid=notification-row][data-read=false]').count()) === 0 && (await call(sneha, 'GET', '/notifications/unread-count')).json.count === 0)
+  check('D6 "Mark all as read" clears every unread notification', (await S.page.locator('[data-testid=notification-row][data-read=false]').count()) === 0 && await serverUnreadIsZero(sneha))
   check('D6 …without touching another tenant\'s notifications', (await call(amit, 'GET', '/notifications/unread-count')).json.count > 0)
   await shot(S.page, 'D6-notifications-all-read')
 

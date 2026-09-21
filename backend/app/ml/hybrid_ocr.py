@@ -26,6 +26,8 @@ import cv2
 import numpy as np
 import pytesseract
 
+from app.config import settings
+
 logger = logging.getLogger(__name__)
 
 # Each Tesseract run is single-threaded; we run several passes side by side. Letting every run also spawn its own OpenMP threads
@@ -37,6 +39,7 @@ TARGET_WIDTH = 2300           # px the page is scaled to before reading
 MIN_SCALE, MAX_SCALE = 0.5, 4.0
 MIN_WORD_CONF = 30            # words below this are noise for confidence purposes
 DEFAULT_BUDGET_SECONDS = 60.0
+LITE_TARGET_WIDTH = 1600        # lite mode reads a smaller picture: less memory and far less CPU
 PASS_TIMEOUT_SECONDS = 40      # one Tesseract run that takes longer than this is killed (a stuck run must never hold a bill hostage)
 
 _langs_cache: Optional[set] = None
@@ -54,8 +57,10 @@ def available_languages() -> set:
     return _langs_cache
 
 
-def language_string(want: Tuple[str, ...] = ("eng", "mar")) -> str:
-    """'eng+mar' when both are installed, otherwise whatever subset is - never a language Tesseract can't load."""
+def language_string(want: Optional[Tuple[str, ...]] = None) -> str:
+    """The configured languages (OCR_LANGUAGES, default 'eng+mar') that are installed - never a language Tesseract can't load."""
+    if want is None:
+        want = tuple(p.strip() for p in settings.OCR_LANGUAGES.replace(",", "+").split("+") if p.strip()) or ("eng",)
     have = available_languages()
     chosen = [l for l in want if l in have]
     return "+".join(chosen) if chosen else "eng"
@@ -143,17 +148,23 @@ def _deskew(gray: np.ndarray) -> np.ndarray:
     return deskew(gray)
 
 
-def prepare(page: np.ndarray) -> Dict[str, np.ndarray]:
-    """The picture variants we may read: 'clahe' (contrast-boosted grey), 'otsu' (black/white), 'adaptive' (uneven light)."""
+def prepare(page: np.ndarray, lite: bool = False) -> Dict[str, np.ndarray]:
+    """The picture variants we may read: 'clahe' (contrast-boosted grey), 'otsu' (black/white), 'adaptive' (uneven light).
+    Lite mode uses a smaller picture, skips the slow denoising and builds only the two variants it can use."""
     gray = cv2.cvtColor(page, cv2.COLOR_BGR2GRAY)
     h, w = gray.shape[:2]
-    scale = max(MIN_SCALE, min(MAX_SCALE, TARGET_WIDTH / float(w)))
+    scale = max(MIN_SCALE, min(MAX_SCALE, (LITE_TARGET_WIDTH if lite else TARGET_WIDTH) / float(w)))
     if abs(scale - 1.0) > 0.05:
         gray = cv2.resize(gray, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC if scale > 1 else cv2.INTER_AREA)
     gray = _deskew(gray)
-    gray = cv2.fastNlMeansDenoising(gray, h=7) if gray.size < 6_000_000 else cv2.GaussianBlur(gray, (3, 3), 0)
+    if lite or gray.size >= 6_000_000:
+        gray = cv2.GaussianBlur(gray, (3, 3), 0)
+    else:
+        gray = cv2.fastNlMeansDenoising(gray, h=7)
     clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8)).apply(gray)
     _, otsu = cv2.threshold(clahe, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    if lite:
+        return {"clahe": clahe, "otsu": otsu}
     adaptive = cv2.adaptiveThreshold(clahe, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 41, 12)
     return {"clahe": clahe, "otsu": otsu, "adaptive": adaptive}
 
@@ -214,8 +225,11 @@ def _norm_key(text: str) -> str:
     return re.sub(r"[^0-9a-zऀ-ॿ]", "", text.lower())
 
 
-def _merge(existing: List[Line], new: List[Line]) -> List[Line]:
-    """Keep every distinct line; drop a line whose normalised text an earlier pass already produced."""
+def _merge(existing: List[Line], new: List[Line], keep_all: bool = False) -> List[Line]:
+    """Keep every distinct line; drop a line whose normalised text an earlier pass already produced.
+    Lite mode (keep_all) keeps repeats too: with only a few passes, 'two passes read the same amount' is its evidence that a digit is right."""
+    if keep_all:
+        return list(existing) + [l for l in new if len(_norm_key(l.text)) >= 2]
     seen = {_norm_key(l.text) for l in existing}
     out = list(existing)
     for line in new:
@@ -248,7 +262,8 @@ def run_hybrid_ocr(path: str, budget_seconds: float = DEFAULT_BUDGET_SECONDS,
         return result
     result.pages = len(pages)
     result.width = int(pages[0].shape[1]) if pages else 0
-    workers = workers or max(1, min(4, os.cpu_count() or 1))
+    lite = bool(settings.OCR_LITE_MODE)
+    workers = 1 if lite else (workers or max(1, min(4, os.cpu_count() or 1)))
     lang_all = result.languages
     has_mar = "mar" in lang_all
 
@@ -259,12 +274,15 @@ def run_hybrid_ocr(path: str, budget_seconds: float = DEFAULT_BUDGET_SECONDS,
         [("eng/psm6/otsu", "eng", 6, "otsu"), ("eng/psm11/adaptive", "eng", 11, "adaptive")]
         + ([(f"{lang_all}/psm11/otsu", lang_all, 11, "otsu")] if has_mar else []),
     ]
+    if lite:                                   # one pass per step, English+Marathi first, and stop as soon as the essentials are read
+        first = (f"{lang_all}/psm6/clahe", lang_all, 6, "clahe") if has_mar else ("eng/psm6/clahe", "eng", 6, "clahe")
+        plan = [[first], [("eng/psm11/clahe", "eng", 11, "clahe")], [("eng/psm6/otsu", "eng", 6, "otsu")]]
 
     all_words_by_pass: Dict[str, List[dict]] = {}
     deadline = started + budget_seconds
     for page_no, page in enumerate(pages):
         try:
-            pictures = prepare(page)
+            pictures = prepare(page, lite)
         except Exception as exc:
             logger.warning("Preparing page %s failed: %s", page_no + 1, exc)
             continue
@@ -284,7 +302,7 @@ def run_hybrid_ocr(path: str, budget_seconds: float = DEFAULT_BUDGET_SECONDS,
                     if not words:
                         continue
                     all_words_by_pass[f"{page_no}:{name}"] = words
-                    result.lines = _merge(result.lines, words_to_lines(words, page_no, name))
+                    result.lines = _merge(result.lines, words_to_lines(words, page_no, name), keep_all=lite)
                     result.passes.append(f"p{page_no + 1}:{name}")
             finally:
                 pool.shutdown(wait=False, cancel_futures=True)   # never block past the budget waiting for a slow pass

@@ -40,8 +40,8 @@ EXT_TO_MIME = {
 }
 UNSUPPORTED_MSG = "Unsupported file type. Please upload a PDF, JPG, PNG or WebP file."
 
-OCR_TIMEOUT_SECONDS = 120
-OCR_BUDGET_SECONDS = 60            # the hybrid reader stops adding OCR passes after this long (it always returns what it has)
+OCR_TIMEOUT_SECONDS = 200 if settings.OCR_LITE_MODE else 120       # lite mode runs on a tiny CPU, so it is given longer
+OCR_BUDGET_SECONDS = 120 if settings.OCR_LITE_MODE else 60            # the hybrid reader stops adding OCR passes after this long (it always returns what it has)
 MAX_IMAGE_PIXELS = 50_000_000
 STARTED_KEY = "_processing_started_at"   # internal marker kept inside extracted_data while processing
 
