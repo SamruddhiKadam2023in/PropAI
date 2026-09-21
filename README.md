@@ -21,7 +21,8 @@ PropAI automates financial document processing, predicts rental market trends, a
 | AI / ML | Tesseract OCR, OpenCV, spaCy, scikit-learn, pypdfium2 |
 | Reports | ReportLab (PDF), openpyxl (Excel) |
 | Auth | JWT access tokens + rotating refresh tokens, bcrypt, email one-time codes (OTP) |
-| Deploy | Docker Compose, Nginx |
+| Email | SMTP (Gmail) or Brevo's web API |
+| Deploy | Docker Compose, Nginx, Caddy (HTTPS), Vercel (website), Render / Oracle Cloud (API), Neon, MongoDB Atlas |
 
 ---
 
@@ -32,7 +33,7 @@ PropAI automates financial document processing, predicts rental market trends, a
 - Payments page: what's due this month, record a payment, transaction history with receipts
 - Rental agreement view, including any amount still owed after leaving early
 - Upload documents — OCR reads English and Marathi bills, classifies the document, and pulls out type, vendor, amount, bill date, due date, billing period, and address (PIN, suburb, city, state)
-- Cost analysis with expense trends and next-month forecast
+- Cost analysis with expense trends and next-month forecast — **filled automatically from the utility bills you upload** (electricity, water, gas)
 - **Find a Home** — search available properties and apply to rent
 - Track rental application status (Pending / Approved / Rejected)
 - In-app notifications and messaging with owner
@@ -84,9 +85,11 @@ PropAI/
 │   │   ├── ml/               # OCR pipeline, KNN, regression, NLP
 │   │   ├── services/          # OCR service, report generation, listings
 │   │   └── utils/             # Auth helpers, cache, dependencies
-│   ├── seed.py               # Sample data loader
+│   ├── seed.py               # Sample data loader (refuses to run when DEBUG=false)
+│   ├── create_manager.py     # Creates the first Manager on a live server
 │   ├── requirements.txt
-│   └── Dockerfile
+│   ├── Dockerfile            # normal image (full bill reader)
+│   └── Dockerfile.free       # image for free 512 MB hosts (lite bill reader)
 ├── frontend/
 │   ├── src/
 │   │   ├── pages/            # Tenant, Owner, Manager dashboards
@@ -95,8 +98,11 @@ PropAI/
 │   │   └── services/            # Axios API client
 │   ├── Dockerfile
 │   └── nginx.conf
+├── deploy/                   # Production setups and step-by-step guides (Oracle server, free hosts, Caddy)
 ├── tests/                    # End-to-end API and browser tests (see tests/README.md)
-├── docker-compose.yml
+├── docker-compose.yml        # local demo stack
+├── render.yaml               # optional paid Render blueprint
+├── LICENSE                   # MIT
 └── README.md
 ```
 
@@ -198,6 +204,11 @@ For production, update these values:
 | `DEBUG` | Set to `false` (`true` prints every SQL statement, including password hashes, in the logs) |
 | `FRONTEND_URL` | The website's address (the only origin allowed to call the API) |
 | `CONFIDENCE_THRESHOLD` | Minimum OCR confidence (default `0.65`) |
+| `BREVO_API_KEY` | Send code emails through Brevo's web API instead of SMTP (for hosts that block SMTP ports) |
+| `OCR_LITE_MODE` | `true` on tiny hosts (512 MB): lighter, safer bill reading (default `false`) |
+| `OCR_LANGUAGES` | Languages Tesseract reads, e.g. `eng+mar` (default) or `eng` |
+| `MIRROR_UPLOADS_TO_MONGO` | `true` on hosts whose disk is wiped on restart: keeps a copy of every upload in MongoDB |
+| `BOOTSTRAP_MANAGER_EMAIL` / `_NAME` / `_PASSWORD` | Creates the first Manager at start-up when no Manager exists (hosts with no terminal). Delete them after your first sign-in |
 
 The **Quick Demo Login** panel on the Login page is shown only when `frontend/.env` contains `VITE_SHOW_DEMO_LOGIN=true` (copy `frontend/.env.example` to `frontend/.env` for a local demo). **Public builds must not set it** — without it, the build contains no panel and no demo password.
 
@@ -231,7 +242,9 @@ The **Quick Demo Login** panel on the Login page is shown only when `frontend/.e
    docker compose up -d --force-recreate backend
    ```
 
-If `SMTP_HOST` is empty, the server sends nothing and the sign-up screen says the code could not be sent. For development only, you can set `EMAIL_DEV_LOG_CODES=true` to print codes in the backend log (`docker compose logs backend`). **Never enable that in production.**
+**Hosts that block SMTP** (Render free, Hugging Face): set `BREVO_API_KEY` instead. Create a free [Brevo](https://www.brevo.com) account, verify your sender address, generate an API key, and set `SMTP_FROM` to `PropAI <your verified address>`. Codes are then sent over HTTPS.
+
+If neither `SMTP_HOST` nor `BREVO_API_KEY` is set, the server sends nothing and the sign-up screen says the code could not be sent. For development only, you can set `EMAIL_DEV_LOG_CODES=true` to print codes in the backend log (`docker compose logs backend`). **Never enable that in production.**
 
 ---
 
@@ -247,21 +260,34 @@ docker compose build backend
 docker compose up -d --force-recreate backend
 ```
 
-**Known limits:** very low-resolution photos are flagged instead of read; the place list in `backend/app/ml/india_places.py` covers major cities and suburbs and can be extended.
+### Lite mode (small free hosts)
+
+A free host with 512 MB of memory and a fraction of a CPU can't run the full reader (measured: it hits the memory limit and takes over 2 minutes per bill). Setting `OCR_LITE_MODE=true` (already set in `backend/Dockerfile.free`) reads one Tesseract pass at a time on a smaller picture, loads no spaCy model, and stops as soon as the essentials are read (about 260–290 MB peak, 10–80 seconds).
+
+The trade-off is deliberate: lite mode only accepts an amount it saw **twice next to a label**. Otherwise the amount stays empty and the bill is marked "Needs review", so a wrong amount is never shown. Clear English bills read completely; Marathi bills usually give the address, dates, type and vendor, and the user types the amount once. Set `OCR_LANGUAGES=eng` to skip Marathi on a very slow host.
+
+### Bills feed the Cost Analysis
+
+When a bill finishes reading with a type (electricity, water or gas), an amount and a date, it becomes an **expense on the tenant's property**, so the charts and trends fill themselves. Correcting a bill's amount, date or type updates its expense; deleting the bill deletes it. A bill that still needs review creates no expense.
+
+**Known limits:** very low-resolution photos are flagged instead of read; the place list in `backend/app/ml/india_places.py` covers major cities and suburbs and can be extended. The test bills in `tests/assets/bills/` are invented sample bills; never add a real person's bill to the repository.
 
 ---
 
 ## 🚢 Deploying for Free
 
-The local Docker setup is a **demo** (sample passwords, database ports open, debug on). For a real, always-on site the recommended free setup is:
+The local Docker setup is a **demo** (sample passwords, database ports open, debug on). For a real site there are two free setups, both with the website on **Vercel**:
 
-- **Website** on **Vercel** (free), built from the `frontend` folder.
-- **API** on an **Oracle Cloud "Always Free"** server, running Docker Compose behind **Caddy** (automatic HTTPS), with a free **DuckDNS** address.
+| Setup | API runs on | Databases | Needs a card? | Bill reading |
+|---|---|---|---|---|
+| **No card** — [`deploy/FREE_HOST.md`](deploy/FREE_HOST.md) | Render (or Koyeb) free web service, 512 MB | Neon (Postgres), MongoDB Atlas, Redis inside the container | No | **Lite mode**: safe but often leaves Marathi amounts for the user to confirm |
+| **Always-on server** — [`deploy/README.md`](deploy/README.md) | Oracle Cloud "Always Free" server, Docker Compose + Caddy (automatic HTTPS) + free DuckDNS address | Postgres, MongoDB, Redis in Docker | Yes (identity check only) | **Full mode**: reads Marathi and English bills completely |
 
-Step-by-step instructions are in **[`deploy/README.md`](deploy/README.md)** (Oracle server) and, if you have **no credit card**, **[`deploy/FREE_HOST.md`](deploy/FREE_HOST.md)** (Vercel + Render/Koyeb free tier + Neon + MongoDB Atlas + Brevo email, using a lighter bill-reading mode). Key points:
+The free web hosts sleep after about 15 minutes idle (a free UptimeRobot monitor keeps them awake), wipe their disk on restart (uploads are mirrored into MongoDB and restored), and block the usual email ports (codes go through Brevo's web API). Key points:
 
 - The app **refuses to start** with `DEBUG=false` if `SECRET_KEY` is the placeholder or shorter than 32 characters.
-- Create your first Manager with `python create_manager.py` and **never run `seed.py` on a live server** (it deletes all data and refuses to run when `DEBUG=false`).
+- Create your first Manager with `python create_manager.py` (or the `BOOTSTRAP_MANAGER_*` settings on hosts with no terminal) and **never run `seed.py` on a live server** (it deletes all data and refuses to run when `DEBUG=false`).
+- The public website build has **no demo-login panel and no demo password** (checked by an automated test).
 - Keep every secret (SMTP app password, `SECRET_KEY`, database passwords) only in the host's environment or `deploy/.env` — never in chat, git or screenshots. If one leaks, revoke it and create a new one.
 - Dependencies were upgraded for known security advisories; re-check with `pip-audit` (backend) and `npm audit --omit=dev` (frontend).
 
@@ -269,7 +295,7 @@ Step-by-step instructions are in **[`deploy/README.md`](deploy/README.md)** (Ora
 
 ## 🧪 Running the Tests
 
-Real end-to-end tests (API + real browser) live in the `tests/` folder. See `tests/README.md`.
+Real end-to-end tests (API + real browser) live in the `tests/` folder — about 31 suites and 1,240 checks covering sign-in, agreements and payments, bill reading, hosting features, exports and every page. See `tests/README.md`.
 
 ```bash
 pip install -r tests/requirements.txt
@@ -292,7 +318,7 @@ Once the backend is running, open either of these in your browser:
 
 ## 📄 License
 
-This project is open-source. Feel free to use, modify, and distribute it as per your needs (add your preferred license, e.g. MIT, here).
+Released under the **MIT License** — see [`LICENSE`](LICENSE). You may use, modify and distribute it, keeping the copyright notice.
 
 ---
 
