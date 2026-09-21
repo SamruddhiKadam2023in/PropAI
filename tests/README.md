@@ -1,89 +1,285 @@
-# PropAI tests
+# 🏠 PropAI : AI-Driven Financial Analytics for Property Management
 
-End-to-end tests that drive the **real running app**: real API calls against the real databases, and a real browser for the UI.
-Nothing is mocked. Every suite creates its own users, properties and payments and removes them again afterwards.
+> A full-stack intelligent property management platform combining OCR, NLP, KNN-based rent comparison, and expense forecasting.
 
-## What is covered
+**Repository:** [github.com/SamruddhiKadam2023in/PropAI](https://github.com/SamruddhiKadam2023in/PropAI)
 
-| Area | Suites |
+---
+
+## 📌 About the Project
+
+PropAI automates financial document processing, predicts rental market trends, and streamlines the complete tenant–owner–manager workflow. It supports three user roles — **Tenant**, **Owner**, and **Manager** — each with a dedicated dashboard and its own set of features.
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
 |---|---|
-| Sign-up, email OTP, password policy, login throttling, refresh tokens, manager-only user creation | `api/auth_api_tests.py`, `ui/ui_auth.mjs` |
-| Forgotten password (code by email, reset, sessions revoked) | `api/auth_reset_tests.py`, `ui/ui_reset.mjs` |
-| Account page: edit profile, change password, Manager deactivate / reactivate users | `api/account_api_tests.py`, `ui/ui_account.mjs` |
-| Email sender (SMTP message, escaping, failures) | `api/smtp_sender_test.py` |
-| Tenant agreement abandonment rule | `api/abandon_api_tests.py`, `ui/ui_abandon.mjs` |
-| Tenant pages, documents, maintenance, messages, SMS / WhatsApp links, isolation | `api/tenant_api_tests.py`, `ui/ui_tenant.mjs` |
-| Owner maintenance, service providers and fees | `api/maint_regression_tests.py`, `api/providers_dir_api_tests.py`, `ui/ui_dirs.mjs` |
-| Application approve / reject, expenses (authorization) | `api/approve_auth_tests.py`, `api/expense_auth_tests.py` |
-| Bill reading: sample English + Marathi bills end to end, and the extraction rules | `api/ocr_bills_tests.py`, `api/ocr_extractor_unit.py` (fixtures in `assets/bills/`) |
-| Manager exports, OCR configuration removed | `ui/ui_export.mjs`, `ui/ui_mgr_ocr.mjs` |
-| Login page, demo login panel | `ui/ui_demo_restore.mjs` |
-| Every page for every role, light and dark, phone and desktop; role/authorization matrix | `ui/reg_sweep.mjs` (`api`, `guards`, `tenant`, `owner`, `manager`) |
-| Responsive audit (overflow, clipped text, tap targets) | `ui/resp_audit.mjs` (run by hand, prints a report) |
+| Backend | FastAPI, SQLAlchemy, PostgreSQL, MongoDB, Redis |
+| Frontend | React 18, Vite, Tailwind CSS, Recharts |
+| AI / ML | Tesseract OCR, OpenCV, spaCy, scikit-learn, pypdfium2 |
+| Reports | ReportLab (PDF), openpyxl (Excel) |
+| Auth | JWT access tokens + rotating refresh tokens, bcrypt, email one-time codes (OTP) |
+| Deploy | Docker Compose, Nginx |
 
-## Running them
+---
 
-One-time setup, from the project root:
+## ✨ Features by Role
+
+### 🧑‍💼 Tenant
+- Dashboard with property info and payment history
+- Payments page: what's due this month, record a payment, transaction history with receipts
+- Rental agreement view, including any amount still owed after leaving early
+- Upload documents — OCR reads English and Marathi bills, classifies the document, and pulls out type, vendor, amount, bill date, due date, billing period, and address (PIN, suburb, city, state)
+- Cost analysis with expense trends and next-month forecast
+- **Find a Home** — search available properties and apply to rent
+- Track rental application status (Pending / Approved / Rejected)
+- In-app notifications and messaging with owner
+
+### 🏢 Owner
+- Portfolio dashboard with occupancy rate and income summary
+- Add, edit, and manage properties
+- Review incoming rental applications and approve or reject them
+- Analytics powered by KNN market rent comparison
+- Download PDF and Excel financial reports
+- Messaging with tenants
+- Maintenance requests, service records and fees, and a directory of repair contacts
+- Agreements: record the rent and term for a tenant, and record a tenant leaving early
+
+### 🛡️ Manager
+- Platform-wide dashboard with all users, properties, and rent stats
+- Manage users and assign roles
+- View and action all rental applications across all properties
+- Rent collection tracker (by month or date range)
+- Download PDF and Excel reports for all properties, or for a single property
+- Add users (Tenant, Owner, or Manager), deactivate or reactivate accounts, and review all agreements
+
+---
+
+## 🔄 How the Rental Flow Works
+
+1. Tenant browses available properties and clicks **Apply to Rent**
+2. Owner receives a bell notification — *New Rental Application*
+3. Manager also receives the same notification
+4. Owner or Manager opens the Applications page
+5. They click **Approve** or **Reject**
+6. Tenant immediately receives a notification with the outcome
+7. On approval, the property is automatically marked as **Occupied**
+
+---
+
+## 📂 Project Structure
 
 ```
+PropAI/
+├── backend/
+│   ├── app/
+│   │   ├── main.py          # Entry point, CORS, routers
+│   │   ├── config.py        # Settings and environment variables
+│   │   ├── database.py      # PostgreSQL, MongoDB, Redis connections
+│   │   ├── models/          # SQLAlchemy database models
+│   │   ├── schemas/         # Pydantic request and response schemas
+│   │   ├── routers/         # All API endpoints
+│   │   ├── ml/               # OCR pipeline, KNN, regression, NLP
+│   │   ├── services/          # OCR service, report generation, listings
+│   │   └── utils/             # Auth helpers, cache, dependencies
+│   ├── seed.py               # Sample data loader
+│   ├── requirements.txt
+│   └── Dockerfile
+├── frontend/
+│   ├── src/
+│   │   ├── pages/            # Tenant, Owner, Manager dashboards
+│   │   ├── components/        # Layout, Charts, DocumentUpload
+│   │   ├── contexts/           # Auth and Theme state
+│   │   └── services/            # Axios API client
+│   ├── Dockerfile
+│   └── nginx.conf
+├── tests/                    # End-to-end API and browser tests (see tests/README.md)
+├── docker-compose.yml
+└── README.md
+```
+
+---
+
+## ⚙️ Requirements
+
+Before you begin, make sure you have the following installed on your machine:
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop)
+- [Git](https://git-scm.com/download/win)
+
+---
+
+## 🚀 How to Clone and Run Locally
+
+Follow these steps in order.
+
+**Step 1 — Clone the repository**
+```bash
+git clone https://github.com/SamruddhiKadam2023in/PropAI.git
+```
+
+**Step 2 — Go into the project folder**
+```bash
+cd PropAI
+```
+
+**Step 3 — Start all services using Docker**
+*(First time will take 5 to 8 minutes to download and build everything)*
+```bash
+docker compose up --build -d
+```
+
+This starts 5 services automatically:
+| Service | Address |
+|---|---|
+| Backend API | http://localhost:8000 |
+| Frontend app | http://localhost:3000 |
+| PostgreSQL database | port 5432 |
+| MongoDB | port 27017 |
+| Redis | port 6379 |
+
+**Step 4 — Load sample data into the database**
+```bash
+docker exec property_backend python seed.py
+```
+
+**Step 5 — Open the app in your browser**
+```
+http://localhost:3000
+```
+
+---
+
+## 🔑 Login Credentials (after running seed)
+
+| Role | Email | Password |
+|---|---|---|
+| Tenant | amit@example.in | PropAI@2024 |
+| Owner | vikram@propai.in | PropAI@2024 |
+| Manager | rajesh@propai.in | PropAI@2024 |
+
+You can also register a new **Tenant** or **Owner** account. Sign-up requires a one-time code emailed to you (see **Sign-in, sign-up and email codes** below). Manager accounts cannot be created via sign-up — an existing Manager adds them under **Users & Roles → Add user**.
+
+> ⚠️ These are demo/seed credentials for local development only — replace or remove them entirely before any public/production deployment.
+
+---
+
+## 📅 Daily Usage
+
+| Action | Command |
+|---|---|
+| Start the project | `docker compose up -d` |
+| Stop the project (data is saved) | `docker compose stop` |
+| View backend logs | `docker compose logs -f backend` |
+
+---
+
+## 🌐 Environment Variables
+
+A sample environment file is provided at `backend/.env.example`. Copy it to `backend/.env` before running locally:
+
+```bash
+copy backend\.env.example backend\.env
+```
+
+The default values work with Docker out of the box — no changes needed for local development. To receive emailed one-time codes, you must add your mail settings (`SMTP_*`); see **Email setup** below.
+
+For production, update these values:
+
+| Variable | Purpose |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `MONGODB_URL` | MongoDB connection string |
+| `REDIS_URL` | Redis connection string |
+| `SECRET_KEY` | A long random secret string |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USERNAME` / `SMTP_PASSWORD` / `SMTP_FROM` | Outgoing email for one-time codes |
+| `DEBUG` | Set to `false` (`true` prints every SQL statement, including password hashes, in the logs) |
+| `ALLOWED_ORIGINS` | The real address of your frontend |
+| `CONFIDENCE_THRESHOLD` | Minimum OCR confidence (default `0.65`) |
+
+The **Quick Demo Login** panel on the Login page is shown only when `frontend/.env` contains `VITE_SHOW_DEMO_LOGIN=true` (copy `frontend/.env.example` to `frontend/.env` for a local demo). **Public builds must not set it** — without it, the build contains no panel and no demo password.
+
+---
+
+## 🔐 Sign-in, Sign-up, and Email Codes
+
+- Sign-up (Tenant or Owner only) creates an unverified account and emails a 6-digit code. You're signed in only after entering it.
+- Codes last 10 minutes, work once, and lock after 5 wrong guesses. "Resend code" waits 60 seconds (max 5 per hour).
+- **Forgot password?** on the Login page emails a reset code the same way. A reset signs you out everywhere.
+- Passwords must be at least 8 characters (at most 72 bytes) — enforced on both the server and the forms.
+- 5 wrong passwords for the same email from the same address within a minute are blocked for the rest of that minute (HTTP 429).
+- Access tokens last 15 minutes and renew silently; the refresh token lasts 7 days, is replaced on every use, and is revoked by Sign Out, a password reset, or if an already-used one is presented again.
+- Managers create other accounts (including other Managers) at **Manager → Users & Roles → Add user**.
+- Everyone can open **Account settings** (click your name at the bottom of the sidebar) to edit their name and phone and to change their password. Changing the password signs out all other devices. Email and role can't be changed there.
+- Managers can deactivate and reactivate other accounts under **Users & Roles**. A deactivated person is signed out on their next action and cannot sign in until reactivated; their data is kept. A Manager cannot deactivate themselves.
+
+### Email Setup (Gmail example)
+
+1. On the Gmail account, turn on 2-Step Verification, then create an App password at [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords) (it's 16 letters shown once — remove the spaces when you copy it).
+2. In `backend/.env` set:
+   ```
+   SMTP_HOST=smtp.gmail.com
+   SMTP_PORT=587
+   SMTP_USERNAME=your.address@gmail.com
+   SMTP_PASSWORD=<the 16 letters, no spaces>
+   SMTP_FROM="PropAI <your.address@gmail.com>"
+   ```
+3. Apply it:
+   ```bash
+   docker compose up -d --force-recreate backend
+   ```
+
+If `SMTP_HOST` is empty, the server sends nothing and the sign-up screen says the code could not be sent. For development only, you can set `EMAIL_DEV_LOG_CODES=true` to print codes in the backend log (`docker compose logs backend`). **Never enable that in production.**
+
+---
+
+## 🧾 Reading Bills (English + Marathi)
+
+Uploaded bills are read in the background by `backend/app/ml/bill_pipeline.py`: Tesseract (English + Marathi) runs on several cleaned-up copies of the image, then rules identify the type, vendor, amount to pay, bill date, due date, billing period, and address (6-digit PIN checked against its state, suburb/city, with the name kept apart from the address).
+
+It stops as soon as it's confident, within 60 seconds. Anything it's unsure about is left **empty** (never guessed), and the document is marked **"flagged"** so the user can correct it. If the new reader finds nothing, the older pipeline is used as a fallback.
+
+The Marathi language pack is installed in the backend image (`backend/Dockerfile`), so after pulling this change, run:
+```bash
+docker compose build backend
+docker compose up -d --force-recreate backend
+```
+
+**Known limits:** very low-resolution photos are flagged instead of read; the place list in `backend/app/ml/india_places.py` covers major cities and suburbs and can be extended.
+
+---
+
+## 🧪 Running the Tests
+
+Real end-to-end tests (API + real browser) live in the `tests/` folder. See `tests/README.md`.
+
+```bash
 pip install -r tests/requirements.txt
 cd tests && npm install && cd ..
+python tests/run_all.py
 ```
 
-The browser suites use Microsoft Edge. If it is somewhere else, set `BROWSER_PATH` to any Chromium-based browser executable.
-Docker Desktop must be running with the stack up (`docker compose up -d`).
+---
 
-```
-python tests/run_all.py                # everything in the default set
-python tests/run_all.py --api-only     # just the API suites
-python tests/run_all.py --only reset   # suites whose name contains "reset"
-```
+## 📖 API Documentation
 
-The runner does three things you should know about:
+Once the backend is running, open either of these in your browser:
 
-1. **Switches the backend to test mode** using `tests/docker-compose.test.yml`. In test mode no real email is sent and the one-time
-   codes are printed in the backend log, which is how the tests read them. Without this, sign-up tests would try to email
-   `example.com` addresses through your real mail account.
-2. Runs the suites and prints one line per suite.
-3. **Restores normal mode** when it finishes (also on Ctrl+C or failure), so your `backend/.env` email settings apply again.
+| Docs | URL |
+|---|---|
+| Swagger UI | http://localhost:8000/docs |
+| ReDoc | http://localhost:8000/redoc |
 
-To run a single suite by hand you must be in test mode first:
+---
 
-```
-docker compose -f docker-compose.yml -f tests/docker-compose.test.yml up -d --force-recreate backend
-python tests/api/auth_reset_tests.py
-cd tests/ui && node ui_reset.mjs
-docker compose up -d --force-recreate backend      # back to normal
-```
+## 📄 License
 
-## "Seed baseline" suites
+This project is open-source. Feel free to use, modify, and distribute it as per your needs (add your preferred license, e.g. MIT, here).
 
-`api/seed/*` and `ui_docs`, `ui_clean`, `ui_payments`, `ui_rent` assert the exact contents of the **untouched sample data**
-(for example "Amit has exactly 12 payments and no documents"). They fail as soon as anyone records a payment, uploads a
-document or raises a maintenance request by hand, and that is expected. Run them only on a fresh database:
+---
 
-```
-docker compose down -v && docker compose up -d --build
-docker exec property_backend python seed.py
-python tests/run_all.py --seed
-```
+## 🙌 Built With
 
-## Notes
-
-- Test accounts use addresses like `authtest_*@example.com`, `resettest_*`, `abn_*`. If a run is killed half-way you can remove
-  leftovers with `delete from users where email like 'authtest\_%'` (same pattern for the others).
-- Generated files (screenshots, exported PDFs/Excel) go to `tests/ui/shots/` and `tests/.artifacts/` and are safe to delete.
-- `assets/make_assets.py` regenerates the sample bills used by the upload tests (it uses Windows fonts).
-- Test data is created through the Manager-only endpoint `POST /auth/users`, because public sign-up requires an emailed code.
-
-## Sample bills (`assets/bills/`)
-
-The bill-reading tests use three **sample bills that are entirely invented** (names, numbers, addresses and dates are made up, and each
-is stamped "SAMPLE - TEST DATA"). They copy the *layout* of typical Indian bills: a Marathi + English electricity bill, a Marathi +
-English "duplicate" water bill, and an English electricity bill shrunk so far that it cannot be read (it must come back empty and
-"needs review", never guessed). Never add a real person's bill to this repository.
-
-- `assets/make_bills.mjs` draws them (`cd tests && node assets/make_bills.mjs`; needs Edge/Chrome and, for Marathi, the Nirmala UI font).
-- `assets/bills/expected.json` is what the reader must find in each one.
-- `assets/bills/*.ocr.json` are saved OCR readings used by the fast unit tests. After regenerating the pictures, rebuild them by running
-  `run_hybrid_ocr(path, budget_seconds=90)` on each picture inside the backend container and saving `{"lines": [l.to_dict() ...], "languages": ...}`.
+FastAPI · React · PostgreSQL · MongoDB · Redis · Tesseract OCR · spaCy · scikit-learn
