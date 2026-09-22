@@ -39,9 +39,14 @@ class RentComparisonModel:
     # ── Train ────────────────────────────────────────────────────────────────
 
     def train(self, properties: List[Dict]) -> None:
-        if len(properties) < max(3, self.k):
+        if len(properties) < 3:
             logger.warning("Not enough properties to train KNN model.")
             return
+        # Use as many neighbors as are actually available - a hard-coded n_neighbors=5 used to make
+        # this silently refuse to train (and give a blank deviation, though similar properties still
+        # showed) whenever the pool had fewer than 5 properties, even though 3-4 is plenty for a KNN fit.
+        k = min(self.k, len(properties))
+        self.model = KNeighborsRegressor(n_neighbors=k, metric="euclidean")
         X = self._features(properties)
         y = np.array([p["rent_amount"] for p in properties], dtype=float)
         X_scaled = self.scaler.fit_transform(X)

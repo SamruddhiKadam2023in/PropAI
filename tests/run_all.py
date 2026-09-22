@@ -117,6 +117,9 @@ def main():
             if match("ocr_extractor_unit"):
                 results.append(run("ocr_extractor_unit", ["docker", "exec", "-i", "property_backend", "python", "-"], HERE,
                                    stdin_path=os.path.join(HERE, "api", "ocr_extractor_unit.py")))
+            if match("knn_model_unit"):
+                results.append(run("knn_model_unit", ["docker", "exec", "-i", "property_backend", "python", "-"], HERE,
+                                   stdin_path=os.path.join(HERE, "api", "knn_model_unit.py")))
         if not args.api_only:
             print("\nBrowser suites")
             for n, argv in ui:
