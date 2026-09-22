@@ -172,8 +172,11 @@ function CostOverview({ property, analytics }) {
             {Object.entries(CATEGORY_META).map(([key, { label, icon: Icon, color }]) => {
               const predicted = forecast[key]
               const current   = currentCost[key] || 0
-              const delta     = predicted && current ? ((predicted - current) / current * 100).toFixed(1) : null
-              if (!predicted) return null
+              // predicted === 0 is ambiguous: it means either "no history for this category" (hide it) or "the trend
+              // genuinely predicts a drop to zero" (a real prediction - show it). `current` tells them apart: if there is
+              // real spending this month, the category has history, so a 0 forecast is a real (steep) decline, not "no data".
+              const delta     = current ? ((predicted - current) / current * 100).toFixed(1) : null
+              if (!predicted && !current) return null
               return (
                 <div key={key} className="p-3 rounded-xl border border-dashed border-line">
                   <div className="flex items-center gap-1.5 mb-2">
