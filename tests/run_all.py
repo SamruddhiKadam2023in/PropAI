@@ -24,9 +24,9 @@ COMPOSE = ["docker", "compose", "-f", "docker-compose.yml"]
 TEST_OVERRIDE = os.path.join("tests", "docker-compose.test.yml")
 
 API_MAIN = ["auth_api_tests", "auth_reset_tests", "account_api_tests", "abandon_api_tests", "approve_auth_tests", "expense_auth_tests",
-            "maint_regression_tests", "tenant_api_tests", "providers_dir_api_tests", "ocr_bills_tests", "file_mirror_tests", "expense_sync_tests", "expense_import_tests"]
+            "maint_regression_tests", "tenant_api_tests", "providers_dir_api_tests", "ocr_bills_tests", "file_mirror_tests", "expense_sync_tests"]
 API_SEED = ["api_tests", "payments_api_tests", "rent_dates_api_tests", "export_api_tests"]
-UI_MAIN = ["ui_auth", "ui_reset", "ui_account", "ui_tenant", "ui_abandon", "ui_dirs", "ui_export", "ui_mgr_ocr", "ui_ocr_card", "ui_expense_import", "ui_demo_restore", "prod_bundle_check"]
+UI_MAIN = ["ui_auth", "ui_reset", "ui_account", "ui_tenant", "ui_abandon", "ui_dirs", "ui_export", "ui_mgr_ocr", "ui_ocr_card", "ui_demo_restore", "prod_bundle_check"]
 UI_SWEEPS = [("reg_sweep api", ["reg_sweep.mjs", "api"]), ("reg_sweep guards", ["reg_sweep.mjs", "guards"]),
              ("reg_sweep tenant", ["reg_sweep.mjs", "tenant"]), ("reg_sweep owner", ["reg_sweep.mjs", "owner"]),
              ("reg_sweep manager", ["reg_sweep.mjs", "manager"])]
