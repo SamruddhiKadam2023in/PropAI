@@ -232,6 +232,25 @@ try:
     check("lite reading finishes well inside the free host's time limit", dt < 120, f"{dt:.0f}s")
     r2 = analyze_bill("/tmp/bills/bses_delhi.png", budget_seconds=120)
     check("an unreadable picture stays empty in lite mode too (no invented amount or address)", r2["amount"] is None and r2["address"]["place"] is None, (r2["amount"], r2["address"]["place"]))
+
+    from app.ml.address_extractor import extract_address  # noqa: E402
+    from app.ml.bill_pipeline import _build_result  # noqa: E402
+    from app.ml.hybrid_ocr import Cell, Line  # noqa: E402
+
+    def _row(text, y=100, src="a"):
+        return Line([Cell(text, 10, 10 + 8 * len(text), 80.0)], y, 20, 0, src)
+
+    one_pass = [_row("STATION ROAD GOVANDI MUMBAI-400088", src="a")]
+    a = extract_address(one_pass)
+    check("a PIN read by only ONE pass is still reported, with its vote count", a["pincode"] == "400088" and a["pincode_votes"] == 1, a)
+    r_full = _build_result(one_pass, ocr_confidence=0.8, engine="t", languages="eng", passes=1, pages=1, image_width=800, lite_guard=False, started=time.time())
+    check("...and full mode still trusts a single reading (unchanged behaviour)", r_full["address"]["pincode"] == "400088", r_full["address"])
+    r_lite = _build_result(one_pass, ocr_confidence=0.8, engine="t", languages="eng", passes=1, pages=1, image_width=800, lite_guard=True, started=time.time())
+    check("...but lite mode will NOT show a PIN (and its state) seen only once - a single misread digit could name the wrong region entirely",
+          r_lite["address"]["pincode"] is None and r_lite["address"]["state"] is None, r_lite["address"])
+    two_pass = one_pass + [_row("STATION ROAD GOVANDI MUMBAI-400088", src="b")]
+    r_lite2 = _build_result(two_pass, ocr_confidence=0.8, engine="t", languages="eng", passes=2, pages=1, image_width=800, lite_guard=True, started=time.time())
+    check("...but a PIN read the SAME way by two passes IS trusted, even in lite mode", r_lite2["address"]["pincode"] == "400088", r_lite2["address"])
 finally:
     settings.OCR_LITE_MODE = False
 

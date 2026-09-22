@@ -321,7 +321,7 @@ def extract_address(lines: List[Line]) -> Dict[str, Any]:
         cands.extend(_candidates_from_pass(source_lines))
     if not cands:
         cands = _candidates_from_label(lines)
-    empty = {"place": None, "suburb": None, "city": None, "state": None, "pincode": None, "customer_name": None, "confidence": 0.0}
+    empty = {"place": None, "suburb": None, "city": None, "state": None, "pincode": None, "pincode_votes": 0, "customer_name": None, "confidence": 0.0}
     if not cands:
         return empty
 
@@ -337,6 +337,7 @@ def extract_address(lines: List[Line]) -> Dict[str, Any]:
             per_source[x["source"]] = max(per_source.get(x["source"], -999), x["score"])
         return (sum(per_source.values()) + 8 * len(per_source), max(per_source.values()))
     pin = max(groups, key=evidence)
+    pincode_votes = len({c["source"] for c in groups[pin]}) if pin is not None else 0   # how many separate OCR passes agree on this PIN
     good = [c for c in groups[pin] if c["score"] >= max(x["score"] for x in groups[pin]) - 60]      # ignore far weaker readings of the same PIN
     name, address_lines = _split_name(_consensus(groups[pin], good))
     place = _clean_place(address_lines)
@@ -352,4 +353,4 @@ def extract_address(lines: List[Line]) -> Dict[str, Any]:
     compact = re.sub(r"\s", "", place)
     if not has_evidence or sum(ch.isalpha() for ch in compact) < 0.6 * len(compact):
         return empty                                   # digits and fragments that merely contain a valid-looking PIN are not an address
-    return {"place": place, "suburb": suburb, "city": city, "state": state, "pincode": pin, "customer_name": name, "confidence": confidence}
+    return {"place": place, "suburb": suburb, "city": city, "state": state, "pincode": pin, "pincode_votes": pincode_votes, "customer_name": name, "confidence": confidence}

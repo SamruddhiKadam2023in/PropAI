@@ -70,11 +70,15 @@ def extraction_score(core: Dict[str, Any], address: Dict[str, Any]) -> float:
 
 
 def _build_result(lines: List[Line], *, ocr_confidence: float, engine: str, languages: str, passes: int, pages: int,
-                  image_width: Optional[int], lite_amount_guard: bool, started: float) -> Dict[str, Any]:
+                  image_width: Optional[int], lite_guard: bool, started: float) -> Dict[str, Any]:
     core = extract_core(lines)
-    if lite_amount_guard and core.get("amount") is not None and (core.get("amount_votes", 0) < 2 or not core.get("amount_label")):
+    if lite_guard and core.get("amount") is not None and (core.get("amount_votes", 0) < 2 or not core.get("amount_label")):
         core["amount"], core["amount_label"] = None, None      # lite mode: a single or unlabelled OCR reading could be a misread digit, so leave it for the user to confirm
     address = extract_address(lines)
+    if lite_guard and address.get("pincode") is not None and address.get("pincode_votes", 0) < 2:
+        # lite mode reads only 1-3 passes, so a PIN seen only once could be a single misread digit that still happens to look like a
+        # real area (e.g. Maharashtra's 400708 misread as Haryana's 130004) - require it to be read the same way twice, like the amount.
+        address = dict(address, pincode=None, state=None)
     score = extraction_score(core, address)
     low_resolution = image_width is not None and 0 < image_width < LOW_RESOLUTION_WIDTH and score < 0.45   # small picture AND hardly anything could be read
     result = {
@@ -114,7 +118,7 @@ def analyze_bill(path: str, budget_seconds: float = 60.0) -> Dict[str, Any]:
     if text_lines:
         result = _build_result(text_lines, ocr_confidence=1.0, engine="pdf-text", languages="text",
                                 passes=1, pages=max((l.page for l in text_lines), default=0) + 1,
-                                image_width=None, lite_amount_guard=False, started=started)
+                                image_width=None, lite_guard=False, started=started)
         if result["document_type"] or result["amount"] is not None or result["address"]["pincode"]:
             return result
         # the PDF has SOME text, but none of it looks like a bill (e.g. a stray watermark, or an old OCR layer baked into a
@@ -124,4 +128,4 @@ def analyze_bill(path: str, budget_seconds: float = 60.0) -> Dict[str, Any]:
     if not ocr.lines:
         return {"error": ocr.error or "No text was read.", "text": "", "ocr_confidence": 0.0, "ocr_engine": f"hybrid({ocr.languages})"}
     return _build_result(ocr.lines, ocr_confidence=ocr.confidence, engine=f"hybrid({ocr.languages})", languages=ocr.languages,
-                          passes=len(ocr.passes), pages=ocr.pages, image_width=ocr.width, lite_amount_guard=settings.OCR_LITE_MODE, started=started)
+                          passes=len(ocr.passes), pages=ocr.pages, image_width=ocr.width, lite_guard=settings.OCR_LITE_MODE, started=started)
