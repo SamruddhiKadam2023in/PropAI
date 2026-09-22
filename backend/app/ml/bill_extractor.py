@@ -374,7 +374,12 @@ def detect_vendor_and_type(lines: List[Line]) -> Dict[str, Any]:
     for dtype, hints in TYPE_HINTS.items():
         scores[dtype] = sum(weight for phrase, weight in hints if _present(phrase, whole, unique_lines))
     if vendor_type:
-        scores[vendor_type] = scores.get(vendor_type, 0) + 8
+        # A vendor's usual type is strong evidence when the bill's own wording is silent or ambiguous (e.g. an OCR-damaged
+        # page where only the vendor name survived). But some vendors provide more than one kind of bill (a municipal
+        # corporation billing water one month and, elsewhere, something else), so it must never outvote a type the bill's
+        # own text already states clearly - a real phrase beats a vendor's default every time.
+        others_strong = max((s for t, s in scores.items() if t != vendor_type), default=0)
+        scores[vendor_type] = scores.get(vendor_type, 0) + (8 if others_strong < 5 else 2)
     best = max(scores, key=scores.get) if scores else None
     if not best or scores[best] < 4:
         return {"document_type": None, "type_score": scores.get(best, 0) if best else 0, "vendor": vendor}

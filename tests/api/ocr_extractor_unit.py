@@ -93,6 +93,10 @@ check("Marathi 'पाणी देयक' -> water", kind("पाणी दे�
 check("Mahanagar Gas -> gas", kind("Mahanagar Gas Limited piped natural gas bill")["document_type"] == "gas_bill")
 check("BSES Rajdhani -> electricity", kind("BSES Rajdhani Power Limited Electricity Bill")["vendor"] == "BSES Rajdhani")
 check("unrecognisable text -> no type (the caller falls back to the classic classifier)", kind("hello world 123")["document_type"] is None)
+check("a vendor's usual type never overrides what the bill's own words clearly state (MCGM defaults to water, but this one says GAS BILL)",
+      kind("MCGM GAS BILL Gas Supply Charges piped natural gas")["document_type"] == "gas_bill", kind("MCGM GAS BILL Gas Supply Charges piped natural gas"))
+check("...but a vendor's usual type IS still used when the text is silent/ambiguous (no internet_bill type exists yet, so this stays water - a known gap, not a crash)",
+      kind("MCGM INTERNET BILL Internet Service Account No 55421")["document_type"] == "water_bill")
 check("'duplicate bill' is flagged", kind("DUPLICATE BILL")["is_duplicate"] is True and kind("BILL")["is_duplicate"] is False)
 
 print("== 5. Address ==")
