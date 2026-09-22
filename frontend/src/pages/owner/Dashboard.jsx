@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import DocumentUpload from '../../components/DocumentUpload'
@@ -7,12 +7,13 @@ import AgreementsManager from '../../components/agreements/AgreementsManager'
 import { MonthlyExpenseBar } from '../../components/Charts'
 import api from '../../services/api'
 import { assetUrl } from '../../utils/assets'
+import { downloadExpenseTemplate, importExpenses } from '../../services/expenses'
 import toast from 'react-hot-toast'
 import {
   Home, Users, BarChart2, FileText, Download, Plus, X,
   MapPin, BedDouble, Bath, Maximize2, TrendingUp, CheckCircle2,
   IndianRupee, Building2, ToggleLeft, ToggleRight,
-  Clock, XCircle, UserCheck, RefreshCw,
+  Clock, XCircle, UserCheck, RefreshCw, Upload,
 } from 'lucide-react'
 
 const fmt = (n) => n?.toLocaleString('en-IN') ?? '—'
@@ -540,6 +541,8 @@ function AnalyticsPage() {
   const [selected, setSelected]     = useState('')
   const [analytics, setAnalytics]   = useState(null)
   const [market, setMarket]         = useState(null)
+  const [importing, setImporting]   = useState(false)
+  const fileInputRef = useRef(null)
 
   useEffect(() => {
     api.get('/properties/').then(r => {
@@ -548,13 +551,36 @@ function AnalyticsPage() {
     }).catch(() => {})
   }, [])
 
-  useEffect(() => {
+  const loadAnalytics = () => {
     if (!selected) return
     Promise.all([
       api.get(`/analytics/dashboard/${selected}`),
       api.get(`/analytics/market-comparison/${selected}`),
     ]).then(([ana, mkt]) => { setAnalytics(ana.data); setMarket(mkt.data) }).catch(() => {})
-  }, [selected])
+  }
+  useEffect(loadAnalytics, [selected])
+
+  const handleImportFile = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''                            // lets the same file be picked again after fixing it
+    if (!file || !selected) return
+    setImporting(true)
+    try {
+      const report = await importExpenses(selected, file)
+      if (report.imported > 0) {
+        toast.success(`Imported ${report.imported} of ${report.total_rows} row${report.total_rows === 1 ? '' : 's'}.`)
+        loadAnalytics()
+      }
+      if (report.skipped.length) {
+        const preview = report.skipped.slice(0, 3).map((s) => `Row ${s.row}: ${s.reason}`).join('\n')
+        toast.error(`${report.skipped.length} row${report.skipped.length === 1 ? '' : 's'} skipped:\n${preview}${report.skipped.length > 3 ? '\n…' : ''}`, { duration: 8000 })
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Import failed. Check the file matches the template.')
+    } finally {
+      setImporting(false)
+    }
+  }
 
   const payments = analytics?.payment_history || []
   const trends   = analytics?.expense_trends   || {}
@@ -589,6 +615,32 @@ function AnalyticsPage() {
           </select>
         )}
       </div>
+
+      {/* Bulk expense import: for real bills the OCR reader couldn't read reliably - the amounts still get typed in once
+          and count towards this property's Cost Analysis and forecast, no photo required. */}
+      {selected && (
+        <div className="card flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <p className="font-semibold text-gray-800 text-sm">Have old bills OCR couldn't read?</p>
+            <p className="text-gray-400 text-xs mt-0.5">Import a spreadsheet of date / category / amount and they'll count towards this property's Cost Analysis.</p>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button type="button" className="btn-secondary text-sm flex items-center gap-1.5"
+              onClick={() => downloadExpenseTemplate().then((blob) => {
+                const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
+                const a = document.createElement('a'); a.href = url; a.download = 'propai_expenses_template.xlsx'
+                document.body.appendChild(a); a.click(); a.remove(); window.URL.revokeObjectURL(url)
+              }).catch(() => toast.error('Failed to download the template'))}>
+              <Download size={14} /> Template
+            </button>
+            <input ref={fileInputRef} type="file" accept=".xlsx,.csv" className="hidden" onChange={handleImportFile} data-testid="expense-import-input" />
+            <button type="button" className="btn-primary text-sm flex items-center gap-1.5" disabled={importing}
+              onClick={() => fileInputRef.current?.click()}>
+              <Upload size={14} /> {importing ? 'Importing…' : 'Import expenses'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* KNN Market Comparison */}
       {dev && (

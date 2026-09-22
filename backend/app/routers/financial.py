@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List, Optional
@@ -16,6 +17,7 @@ from app.schemas.financial import (
 )
 from app.utils.dependencies import get_current_user, require_roles
 from app.services.agreements import EARLY_EXIT, current_agreement, evaluate, money, paid_towards
+from app.services.expense_import import build_template, parse_expense_rows, read_spreadsheet, MAX_ROWS
 from app.utils.cache import invalidate_pattern
 from app.utils.dates import EARLIEST_YEAR, day_bounds_utc, local_date_of, local_today, payment_instant, valid_month
 
@@ -244,6 +246,66 @@ async def create_expense(
     await db.refresh(expense)
     await invalidate_pattern(f"dashboard:*")
     return expense
+
+
+@router.get("/expenses/bulk-import-template")
+async def expenses_bulk_import_template(current_user: User = Depends(require_roles(UserRole.OWNER, UserRole.MANAGER))):
+    """A starter .xlsx with the expected columns, ready to fill in and re-upload via /expenses/bulk-import."""
+    return Response(
+        content=build_template(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=propai_expenses_template.xlsx"},
+    )
+
+
+@router.post("/expenses/bulk-import")
+async def bulk_import_expenses(
+    property_id: int = Form(...),
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.OWNER, UserRole.MANAGER)),
+):
+    """
+    Records many expenses at once from a spreadsheet (date, category, amount, vendor, description) - for real bills OCR
+    could not read reliably. Every usable row is imported; every row that could not be understood is reported back with
+    its row number and the reason, never guessed or silently dropped. A Manager may import for any property; an Owner
+    only for their own.
+    """
+    prop = (await db.execute(select(Property).where(Property.id == property_id))).scalar_one_or_none()
+    if prop is None:
+        raise HTTPException(status_code=404, detail="Property not found.")
+    if current_user.role == UserRole.OWNER and prop.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You can only import expenses for your own properties.")
+
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="The file is empty.")
+    if len(data) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="File is too large. The maximum size is 5 MB.")
+    try:
+        rows = read_spreadsheet(file.filename or "", data)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    if not rows:
+        raise HTTPException(status_code=400, detail="No data rows were found (check the file has a header row plus at least one entry).")
+
+    report = parse_expense_rows(rows)
+    for parsed in report.good:
+        db.add(Expense(
+            category=parsed.category, amount=parsed.amount, expense_date=parsed.expense_date,
+            vendor=parsed.vendor, description=parsed.description or "Bulk import",
+            month=parsed.expense_date.strftime("%Y-%m"), property_id=property_id, document_id=None,
+        ))
+    if report.good:
+        await db.commit()
+        await invalidate_pattern("dashboard:*")
+
+    return {
+        "total_rows": report.total_rows,
+        "imported": len(report.good),
+        "skipped": [{"row": r.row, "reason": r.error} for r in report.bad],
+        "truncated": report.total_rows > MAX_ROWS,
+    }
 
 
 @router.get("/rent-collection")
