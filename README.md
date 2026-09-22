@@ -260,6 +260,10 @@ docker compose build backend
 docker compose up -d --force-recreate backend
 ```
 
+### PDFs downloaded straight from a utility's website
+
+A PDF that already has a real, selectable text layer (most bills downloaded from a discom's portal or emailed as a receipt) is read from that text directly — no OCR, no misread digits, exact even in Marathi, and usually under a second. Only photographed or scanned PDFs go through Tesseract. A PDF whose text doesn't look like a bill at all (an unrelated document with a text layer) falls back to OCR on the rendered page, the same as before this existed.
+
 ### Lite mode (small free hosts)
 
 A free host with 512 MB of memory and a fraction of a CPU can't run the full reader (measured: it hits the memory limit and takes over 2 minutes per bill). Setting `OCR_LITE_MODE=true` (already set in `backend/Dockerfile.free`) reads one Tesseract pass at a time on a smaller picture, loads no spaCy model, and stops as soon as the essentials are read (about 260–290 MB peak, 10–80 seconds).

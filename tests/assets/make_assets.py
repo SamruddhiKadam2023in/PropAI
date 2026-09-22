@@ -79,3 +79,49 @@ open(f"{out}/notes.txt", "w").write("hello, this is not a document")
 open(f"{out}/empty.png", "wb").write(b"")
 open(f"{out}/toobig.png", "wb").write(good[:8] + b"\x00" * (10 * 1024 * 1024 + 10))
 print("assets:", sorted(os.listdir(out)))
+
+# ── PDF bills with a real, selectable text layer (Marathi + English, table-shaped like a real discom bill) ─────────────
+# These exercise bill_pipeline.extract_pdf_text_lines() directly: no OCR is involved, so they must read EXACTLY, fast.
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+import reportlab.rl_config
+reportlab.rl_config.warnOnMissingFontGlyphs = 0
+pdfmetrics.registerFont(TTFont("Nirmala", r"C:\Windows\Fonts\Nirmala.ttc"))
+
+c = canvas.Canvas(f"{out}/bills/msedcl_text_layer.pdf", pagesize=A4)
+W, H = A4
+y = H - 60
+
+
+def row(x, text, size=10, font="Helvetica", dy=18):
+    global y
+    c.setFont(font, size)
+    c.drawString(x, y, text)
+    y -= dy
+
+
+c.setFont("Nirmala", 16); c.drawString(60, y, "महावितरण"); y -= 22
+row(60, "BILL OF SUPPLY FOR THE MONTH OF: MARCH-2024")
+row(60, "BILL NO.(GGN): 000000123456789")
+c.setFont("Nirmala", 11); c.drawString(60, y, "ग्राहक क्रमांक:"); c.setFont("Helvetica", 11); c.drawString(160, y, "000012345678"); y -= 20
+row(60, "SUNIL RAMCHANDRA KULKARNI & SUMAN SUNIL KULKARNI", 11, "Helvetica-Bold")
+row(60, "FLAT NO-401, SAI KRUPA APARTMENTS, PLOT 17 SECTOR 5, AIROLI, NAVI MUMBAI, 400708")
+y -= 10
+c.setFont("Nirmala", 11); c.drawString(60, y, "देयक दिनांक"); c.setFont("Helvetica", 11); c.drawString(200, y, ": 12-03-2024"); y -= 20
+c.setFont("Nirmala", 11); c.drawString(60, y, "देयक रक्कम"); c.setFont("Helvetica", 11); c.drawString(200, y, ": 2,480.00"); y -= 20
+c.setFont("Nirmala", 11); c.drawString(60, y, "देय दिनांक"); c.setFont("Helvetica", 11); c.drawString(200, y, ": 28-03-2024"); y -= 30
+row(60, "Meter No: 06500000033   Sanctioned Load: 5.00 KW")
+row(60, "Current Reading: 2810   Previous Reading: 2620   Units: 190")
+y -= 10
+row(60, "Bill Amount Payable: Rs. 2,480.00", 12, "Helvetica-Bold")
+c.save()
+
+# a PDF with a real (>40 char) text layer that is NOT a bill: extract_pdf_text_lines() must still return it, but
+# bill_pipeline must recognise nothing bill-like was found and fall back to reading the rendered page with OCR instead.
+c = canvas.Canvas(f"{out}/bills/not_a_bill.pdf", pagesize=A4)
+c.setFont("Helvetica-Bold", 20); c.drawString(60, 780, "Curriculum Vitae")
+c.setFont("Helvetica", 12)
+for i, t in enumerate(["Name: John Doe", "Experience: Five years in software engineering.", "Education: B.Tech Computer Science.", "References available on request."]):
+    c.drawString(60, 740 - i * 24, t)
+c.save()
+print("PDF bills:", sorted(os.listdir(f"{out}/bills")))

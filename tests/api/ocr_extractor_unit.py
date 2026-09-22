@@ -9,7 +9,8 @@ import json, os, sys, time
 
 from app.ml.address_extractor import extract_address
 from app.ml.bill_extractor import ascii_digits, extract_amount, extract_core, extract_dates, find_dates
-from app.ml.hybrid_ocr import Cell, Line, language_string, available_languages, words_to_lines
+from app.ml.bill_pipeline import analyze_bill
+from app.ml.hybrid_ocr import Cell, Line, extract_pdf_text_lines, language_string, available_languages, words_to_lines
 from app.ml.india_places import state_from_pin, transliterate_text, valid_pin
 
 results = []
@@ -123,6 +124,33 @@ words = [{"t": "Total", "c": 90, "x0": 10, "x1": 60, "y": 100, "h": 20}, {"t": "
          {"t": "1257", "c": 90, "x0": 400, "x1": 450, "y": 99, "h": 20}, {"t": "Next", "c": 90, "x0": 10, "x1": 50, "y": 160, "h": 20}]
 ls = words_to_lines(words, 0, "t")
 check("words on one baseline become ONE row, split into 2 cells by the wide gap ('Total Amount' | '1257')", len(ls) == 2 and [c.text for c in ls[0].cells] == ["Total Amount", "1257"], [[c.text for c in l.cells] for l in ls])
+
+print("== 7. PDFs with a real text layer (no OCR at all: bills downloaded straight from a utility's website) ==")
+lines = extract_pdf_text_lines(f"{BILLS}/msedcl_text_layer.pdf")
+check("a text-layer PDF returns Lines directly (no OCR run)", bool(lines))
+core, addr = extract_core(lines), extract_address(lines)
+check("Marathi labels in the PDF's own text are read exactly: type, vendor, amount, dates",
+      core.get("document_type") == "electricity_bill" and core.get("vendor") == "MSEDCL" and core.get("amount") == 2480.0
+      and core.get("date") == "12-03-2024" and core.get("due_date") == "28-03-2024", core)
+check("...and the address, with no OCR damage at all", (addr.get("pincode"), addr.get("suburb"), addr.get("city")) == ("400708", "Airoli", "Navi Mumbai")
+      and addr.get("customer_name") == "SUNIL RAMCHANDRA KULKARNI & SUMAN SUNIL KULKARNI", addr)
+
+t0 = time.time()
+r = analyze_bill(f"{BILLS}/msedcl_text_layer.pdf")
+dt = time.time() - t0
+check("analyze_bill() takes the text-layer path: engine 'pdf-text', full confidence, and it is near-instant",
+      r["ocr_engine"] == "pdf-text" and r["confidence"] == 1.0 and dt < 5, (r["ocr_engine"], r["confidence"], f"{dt:.2f}s"))
+check("nothing is ever mistaken for a low-resolution photo on this path", r["low_resolution"] is False and r["image_width"] is None, (r["low_resolution"], r["image_width"]))
+
+check("extract_pdf_text_lines() on a PNG (not a PDF) returns None", extract_pdf_text_lines(f"{BILLS}/msedcl_airoli.png") is None)
+_corrupt_pdf = "/tmp/corrupt_unit_test.pdf"
+open(_corrupt_pdf, "wb").write(b"%PDF-1.4\n" + os.urandom(2000))
+check("extract_pdf_text_lines() on a corrupt PDF returns None, never raises", extract_pdf_text_lines(_corrupt_pdf) is None)
+os.remove(_corrupt_pdf)
+
+r = analyze_bill(f"{BILLS}/not_a_bill.pdf")
+check("a PDF with real text that is NOT a bill (a CV) finds no bill fields, and does not crash trying OCR on the rendered page instead",
+      r["error"] is None and r["document_type"] is None and r["amount"] is None and (r["address"] or {}).get("pincode") is None, r)
 
 print(f"\n{sum(results)}/{len(results)} passed")
 sys.exit(0 if all(results) else 1)

@@ -73,6 +73,11 @@ try:
     check("water bill (Rs 640, 03/12/2025) becomes a water expense", len(ew) == 1 and ew[0][0] == "water" and float(ew[0][1]) == 640.0 and ew[0][3] == "2025-12", ew)
     g = upload(t1, "blank.png", "image/png")
     check("a blank / unreadable picture creates NO expense", expenses_for(g["id"]) == [], (g["status"], expenses_for(g["id"])))
+    p = upload(t1, os.path.join("bills", "msedcl_text_layer.pdf"), "application/pdf")
+    ep = expenses_for(p["id"])
+    check("a bill read from a PDF's own text layer becomes an expense too (electricity, 2480, on 12-03-2024)",
+          len(ep) == 1 and ep[0][0] == "electricity" and float(ep[0][1]) == 2480.0 and ep[0][2] == "2024-03-12",
+          ((p.get("extracted_data") or {}).get("ocr_engine"), ep))
     n = upload(t2, "electricity_bill.png", "image/png")
     check("a tenant with no property gets no expense (nowhere to record it)", n["status"] == "completed" and expenses_for(n["id"]) == [], n["status"])
 

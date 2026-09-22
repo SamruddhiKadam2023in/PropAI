@@ -83,6 +83,15 @@ try:
         check(f"{file}: {dtype}, amount {amount}, completed", doc["document_type"] == dtype and ed.get("amount") == amount and doc["status"] == "completed", (doc["document_type"], ed.get("amount"), doc["status"]))
         check(f"{file}: date read as DD/MM/YYYY", isinstance(ed.get("date"), str) and len(ed["date"]) == 10 and ed["date"][2] == "/", ed.get("date"))
 
+    print("== 2b. A PDF downloaded straight from a utility's website (real text, no OCR needed) ==")
+    doc, secs = upload_and_wait(tenant, os.path.join(BILLS, "msedcl_text_layer.pdf"), "application/pdf")
+    docs.append(doc["id"])
+    ed = doc.get("extracted_data") or {}
+    check("read via the text layer, not OCR: engine 'pdf-text', full confidence, done in well under a second",
+          ed.get("ocr_engine") == "pdf-text" and doc["status"] == "completed" and secs < 15, (ed.get("ocr_engine"), doc["status"], f"{secs:.1f}s"))
+    check("every field exact: MSEDCL electricity bill, Rs 2480, PIN 400708", doc["document_type"] == "electricity_bill" and ed.get("vendor") == "MSEDCL" and ed.get("amount") == 2480.0
+          and ed.get("date") == "12/03/2024" and (ed.get("address") or {}).get("pincode") == "400708", (ed.get("amount"), ed.get("date"), ed.get("address")))
+
     print("== 3. The correction flow still overrides the reader ==")
     fix = requests.patch(f"{API}/documents/{docs[0]}/correct", headers=tenant, json={"amount": 1700.0, "vendor": "Mahavitaran"})
     ed = fix.json().get("extracted_data") or {}

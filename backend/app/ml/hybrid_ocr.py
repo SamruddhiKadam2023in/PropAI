@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 os.environ.setdefault("OMP_THREAD_LIMIT", "1")
 
 MAX_PAGES = 3                 # a bill is 1-2 pages; more is a scanned booklet
+MIN_PDF_TEXT_CHARS = 40       # below this a PDF's "text layer" is a stray watermark, not real content: read it as a scan instead
 TARGET_WIDTH = 2300           # px the page is scaled to before reading
 MIN_SCALE, MAX_SCALE = 0.5, 4.0
 MIN_WORD_CONF = 30            # words below this are noise for confidence purposes
@@ -119,6 +120,88 @@ class HybridOcrResult:
 
 
 # ── Loading and cleaning ──────────────────────────────────────────────────────────────────────────────────────────────
+
+def _pdf_page_words(page) -> List[dict]:
+    """Every word on a PDF page, from the page's own character positions - not from a picture, so nothing is misread.
+    y is measured downward from the top of the page, matching the OCR word dicts words_to_lines() already expects."""
+    width, height = page.get_size()
+    textpage = page.get_textpage()
+    try:
+        n = textpage.count_chars()
+        if n == 0:
+            return []
+        text = textpage.get_text_range(0, n)
+        words: List[dict] = []
+        chars: List[str] = []
+        box: Optional[List[float]] = None
+
+        def flush():
+            nonlocal chars, box
+            if chars and box:
+                joined = "".join(chars)
+                if joined.strip():
+                    left, bottom, right, top = box
+                    words.append({"t": joined, "x0": left, "x1": right, "y": height - top, "h": max(top - bottom, 1.0), "c": 100.0})
+            chars, box = [], None
+
+        for i, ch in enumerate(text):
+            if ch.isspace():
+                flush()
+                continue
+            try:
+                left, bottom, right, top = textpage.get_charbox(i)
+            except Exception:
+                continue
+            if right <= left or top <= bottom:                # a non-printing character (line break etc.) has no real box
+                continue
+            chars.append(ch)
+            if box is None:
+                box = [left, bottom, right, top]
+            else:
+                box[0], box[1] = min(box[0], left), min(box[1], bottom)
+                box[2], box[3] = max(box[2], right), max(box[3], top)
+        flush()
+        return words
+    finally:
+        textpage.close()
+
+
+def extract_pdf_text_lines(path: str) -> Optional[List[Line]]:
+    """
+    If `path` is a PDF with a real, selectable text layer (a bill downloaded straight from a utility's website, not a scan of a
+    printed page), its Lines are built directly from the PDF's own character positions: no OCR, no misread digits, and Marathi
+    reads exactly. Returns None for images, scanned/photographed PDFs, or a text layer too small to be useful - analyze_bill then
+    falls back to reading the rendered pages with Tesseract, same as before this existed.
+    """
+    if not path.lower().endswith(".pdf"):
+        return None
+    try:
+        import pypdfium2 as pdfium
+    except ImportError:
+        return None
+    try:
+        pdf = pdfium.PdfDocument(path)
+    except Exception as exc:
+        logger.warning("Could not open PDF for text extraction: %s", exc)
+        return None
+    lines: List[Line] = []
+    total_chars = 0
+    try:
+        for page_no in range(min(len(pdf), MAX_PAGES)):
+            page = pdf[page_no]
+            try:
+                words = _pdf_page_words(page)
+            finally:
+                page.close()
+            total_chars += sum(len(w["t"]) for w in words)
+            lines.extend(words_to_lines(words, page_no, "pdf-text"))
+    except Exception as exc:
+        logger.warning("PDF text extraction failed: %s", exc)
+        return None
+    finally:
+        pdf.close()
+    return lines if total_chars >= MIN_PDF_TEXT_CHARS else None
+
 
 def load_pages(path: str) -> List[np.ndarray]:
     """Up to MAX_PAGES pages as BGR arrays. PDFs are rendered; images are read as they are."""
