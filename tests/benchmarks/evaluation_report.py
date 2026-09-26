@@ -55,21 +55,42 @@ IMPORTANT MESSAGE Please keep your mobile number and email updated to ensure you
 """
 
 print("=== Part A: OCR Word Error Rate ===")
-print("Sample: bses_delhi.png - the ONE fully-English real bill in tests/assets/bills. The other two real")
-print("samples are Marathi-mixed; they were excluded because hand-transcribing Devanagari script for 'ground")
-print("truth' risks introducing my own transcription errors, which would make the reference unreliable.")
-print("n=1: this is a small, directional data point, not a statistically robust benchmark - a real one would")
-print("need dozens of independently ground-truthed bills.\n")
+print("n=3 real image samples that actually go through OCR (a 4th, gas_bill.pdf, has a genuine PDF text layer")
+print("and is read via direct text extraction with no OCR at all - excluded here, it belongs in Part B only).")
+print("Two of the three (electricity_bill.png, water_bill.jpg) have EXACT ground truth: they were generated")
+print("by tests/assets/make_assets.py from known source strings, not hand-transcribed, so there is zero risk")
+print("of transcription error in their reference text. The third (bses_delhi.png) is manually transcribed by")
+print("reading the image - the one fully-English real sample bill; the other two real samples are")
+print("Marathi-mixed and excluded because hand-transcribing Devanagari risks an unreliable reference.")
+print("n=3 is still small for a rigorous benchmark, but it's no longer a single data point, and it now shows")
+print("BOTH ends: clean computer-generated text (perfect) and a harder, noisier real-world-style bill (poor).\n")
 
 from app.ml.bill_pipeline import analyze_bill
 
-result = analyze_bill("/tmp/bills/bses_delhi.png", budget_seconds=60)
-wer = word_error_rate(REFERENCE_BSES_DELHI, result["text"])
-print(f"WER: {wer['wer']:.1%}  ({wer['edits']} edits / {wer['reference_words']} reference words)")
-print(f"OCR engine confidence: {result['ocr_confidence']:.2f} | engine: {result['ocr_engine']}")
-print("Note: this sample is the test suite's OWN deliberately-hard case (its expected end-to-end status is")
-print("'flagged', i.e. the system already expects this one to need human review) - so a high WER here is an")
-print("honest, expected result on a hard case, not representative of a typical/clean bill.")
+# Exact ground truth - copied verbatim from the `lines` list in tests/assets/make_assets.py, not transcribed.
+REFERENCE_ELECTRICITY = "TATA POWER ELECTRICITY BILL Consumer No: 1234567890 Billing Date: 05/12/2025 Meter Reading Units Consumed: 245 kWh Total Amount Due: Rs. 2,450.00 Payment Due Date: 20/12/2025"
+REFERENCE_WATER = "MCGM WATER BILL Water Supply Charges - Account No 88231 Bill Date: 03/12/2025 Water consumption 18 kl Total Amount Due: Rs. 640.00"
+
+WER_SAMPLES = [
+    ("bses_delhi.png", REFERENCE_BSES_DELHI, "manually transcribed from the image"),
+    ("electricity_bill.png", REFERENCE_ELECTRICITY, "exact - from make_assets.py source"),
+    ("water_bill.jpg", REFERENCE_WATER, "exact - from make_assets.py source"),
+]
+
+print(f"{'sample':<24}{'WER':>8}{'edits':>8}{'ref words':>12}  ground truth")
+wer_results = []
+for filename, reference, source in WER_SAMPLES:
+    result = analyze_bill(f"/tmp/bills/{filename}", budget_seconds=60)
+    wer = word_error_rate(reference, result["text"])
+    wer_results.append((filename, wer, result))
+    print(f"{filename:<24}{wer['wer']:>8.1%}{wer['edits']:>8}{wer['reference_words']:>12}  {source}")
+
+overall_wer_edits = sum(w["edits"] for _, w, _ in wer_results)
+overall_wer_words = sum(w["reference_words"] for _, w, _ in wer_results)
+print(f"\nAggregate WER across all {len(wer_results)} samples: {overall_wer_edits / overall_wer_words:.1%} ({overall_wer_edits}/{overall_wer_words})")
+print("Note: bses_delhi.png is the test suite's OWN deliberately-hard case (expected end-to-end status is")
+print("'flagged' - the system already expects it to need human review), which is why the aggregate is pulled")
+print("up so much by one sample - not because OCR is generally this poor on clean bills, as the other two show.")
 
 # ── Part B: Document-type classification (Precision / Recall / F1) ────────────
 
@@ -83,8 +104,9 @@ def kind(text):
     return extract_core([Line([Cell(text, 10, 10 + 8 * len(text), 80.0)], 100, 20, 0, "t")])["document_type"]
 
 
-# Drawn directly from tests/api/ocr_extractor_unit.py section 4 (the project's own existing, already-vetted
-# labeled test cases) - not invented for this report.
+# Part 1 drawn directly from tests/api/ocr_extractor_unit.py section 4 (the project's own existing,
+# already-vetted labeled test cases, run through extract_core on synthetic-but-representative text rows) -
+# not invented for this report.
 CASES = [
     ("महावितरण BILL OF SUPPLY MSEDCL", "electricity_bill"),
     ("Municipal Corporation of Greater Mumbai water charges", "water_bill"),
@@ -95,8 +117,8 @@ CASES = [
     ("MCGM GAS BILL Gas Supply Charges piped natural gas", "gas_bill"),
     ("MCGM INTERNET BILL Internet Service Account No 55421", "water_bill"),
 ]
-print(f"Dataset: n={len(CASES)}, the project's own existing labeled test cases - small but genuinely")
-print("curated, not invented for this script.\n")
+print(f"Dataset part 1: n={len(CASES)}, the project's own existing labeled test cases (rule-engine only,")
+print("synthetic text rows) - small but genuinely curated, not invented for this script.")
 
 tp, fp, fn = defaultdict(int), defaultdict(int), defaultdict(int)
 correct = 0
@@ -112,6 +134,30 @@ for text, expected in CASES:
             fn[expected] += 1
         if got is not None:
             fp[got] += 1
+
+# Part 2: the 3 generated bill IMAGES/PDF run through the FULL real pipeline (image -> OCR -> extract_core),
+# not just the rule engine on pre-built text rows - a stronger, more realistic check since it doesn't bypass
+# OCR the way part 1 does. Ground truth from tests/assets/make_assets.py (the script that generated them).
+FULL_PIPELINE_CASES = [
+    ("electricity_bill.png", "electricity_bill"),
+    ("water_bill.jpg", "water_bill"),
+    ("gas_bill.pdf", "gas_bill"),
+]
+print(f"\nDataset part 2: n={len(FULL_PIPELINE_CASES)}, real images/PDF through the full OCR+extraction pipeline.\n")
+
+for filename, expected in FULL_PIPELINE_CASES:
+    got = analyze_bill(f"/tmp/bills/{filename}", budget_seconds=60)["document_type"]
+    ok = got == expected
+    correct += ok
+    print(("PASS " if ok else "FAIL ") + f"{filename:<45}  expected={str(expected):<18} got={got}")
+    if got == expected:
+        tp[expected] += 1
+    else:
+        fn[expected] += 1
+        if got is not None:
+            fp[got] += 1
+
+CASES = CASES + FULL_PIPELINE_CASES  # for the accuracy denominator below
 
 labels = sorted(set(e for _, e in CASES if e is not None) | set(tp) | set(fp) | set(fn))
 print(f"\n{'class':<18}{'precision':>10}{'recall':>10}{'f1':>10}")
