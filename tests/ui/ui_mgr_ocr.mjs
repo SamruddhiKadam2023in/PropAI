@@ -21,7 +21,7 @@ await page.getByRole('heading', { name: 'Manager Dashboard' }).waitFor({ timeout
 check('1 Manager logs in through the real form', true)
 const nav = (await page.locator('nav a').allInnerTexts()).map((t) => t.trim()).filter(Boolean)
 console.log('   Manager navigation:', nav.join(' | '))
-check('2 "OCR Config" is no longer in the Manager navigation', !nav.some((t) => /ocr/i.test(t)))
+check('2 "OCR Settings" IS in the Manager navigation (reversed on purpose: Manager can now configure OCR - see ui_ocr_settings.mjs)', nav.some((t) => /ocr/i.test(t)), nav)
 check('3 the rest of the Manager navigation is unchanged', ['Dashboard', 'Users & Roles', 'All Properties', 'Applications', 'Rent Collection', 'Analytics', 'Messages'].every((l) => nav.some((t) => t.startsWith(l))), nav.length)
 check('4 nothing on the Manager dashboard mentions OCR configuration', !/OCR Config|OCR Pipeline Configuration|Confidence Threshold|Dual-Engine/i.test(await page.locator('body').innerText()))
 await page.screenshot({ path: 'shots/mgr/dashboard.png' })

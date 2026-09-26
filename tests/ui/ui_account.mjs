@@ -52,8 +52,10 @@ try {
   const A = await session()
   await signIn(A.page, E.ten, PW, '/tenant')
   const link = A.page.getByTestId('account-link')
+  await link.waitFor({ timeout: 10000 })   // waitForURL inside signIn only means the route changed, not that the sidebar has painted yet
   check('A1 the sidebar user card is a link labelled "Account settings"', (await link.count()) === 1 && (await link.getAttribute('aria-label')) === 'Account settings')
   await link.click(); await A.page.waitForURL('**/account')
+  await A.page.getByRole('heading', { name: 'Account', exact: true }).waitFor({ timeout: 10000 })   // waitForURL only means the client-side route changed, not that React has painted yet - wait for real content before counting it
   check('A2 it opens /account (inside the normal layout, sidebar still there)', (await A.page.getByRole('heading', { name: 'Account', exact: true }).count()) === 1 && (await A.page.getByRole('link', { name: 'Payments' }).count()) === 1)
   check('A3 email and role are shown but read-only', (await A.page.getByTestId('ac-email').inputValue()) === E.ten && (await A.page.getByTestId('ac-email').getAttribute('readonly')) !== null && (await A.page.getByTestId('ac-role').inputValue()) === 'Tenant')
   check('A4 "Save profile" is disabled until something changes', await A.page.getByTestId('save-profile').isDisabled())

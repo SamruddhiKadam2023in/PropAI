@@ -27,7 +27,7 @@ def login(email):
 
 owner, mgr, tenant = login("vikram@propai.in"), login("rajesh@propai.in"), login("amit@example.in")
 
-original = mongo_eval("JSON.stringify(db.ocr_config.findOne())")   # 'null' if no document exists yet
+original = mongo_eval("JSON.stringify(db.ocr_config.findOne({}, {_id: 0}))")   # 'null' if no document exists yet; _id excluded (immutable, and irrelevant to restore)
 try:
     r = requests.get(f"{API}/config/ocr", headers=tenant)
     check("a tenant cannot view OCR config (403)", r.status_code == 403, f"{r.status_code} {r.text[:80]}")
@@ -67,11 +67,12 @@ try:
     check("dead config fields the pipeline never read are no longer exposed", not (dead_fields & set(r.json().keys())), r.json())
 finally:
     if original and original != "null":
-        # restore the exact document that existed before this test ran
-        mongo_eval(f"db.ocr_config.replaceOne({{}}, {original}, {{upsert: true}})")
+        # restore the exact document that existed before this test ran (update_one + $set, not replaceOne:
+        # replaceOne would try to also set _id, which Mongo refuses to change on an existing document)
+        mongo_eval(f"db.ocr_config.updateOne({{}}, {{$set: {original}}}, {{upsert: true}})")
     else:
         mongo_eval("db.ocr_config.deleteMany({})")
-    restored = mongo_eval("JSON.stringify(db.ocr_config.findOne())")
+    restored = mongo_eval("JSON.stringify(db.ocr_config.findOne({}, {_id: 0}))")
     check("cleanup: ocr_config restored to its original state", restored == original, (restored, original))
 
 print(f"\n{sum(results)}/{len(results)} passed")

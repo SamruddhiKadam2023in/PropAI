@@ -5,6 +5,7 @@ import Register from './pages/Register'
 import VerifyEmail from './pages/VerifyEmail'
 import ForgotPassword from './pages/ForgotPassword'
 import Account from './pages/Account'
+import OcrSettings from './pages/OcrSettings'
 import Documentation from './pages/Documentation'
 import Messages from './pages/Messages'
 import TenantDashboard from './pages/tenant/Dashboard'
@@ -57,6 +58,11 @@ export default function App() {
           <Route path="/account" element={
             <ProtectedRoute>
               <Account />
+            </ProtectedRoute>
+          } />
+          <Route path="/settings/ocr" element={
+            <ProtectedRoute roles={['owner', 'manager']}>
+              <OcrSettings />
             </ProtectedRoute>
           } />
           <Route path="/messages" element={

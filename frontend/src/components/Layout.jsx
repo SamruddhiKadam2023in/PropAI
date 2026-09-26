@@ -5,7 +5,7 @@ import { useTheme } from '../contexts/ThemeContext'
 import {
   Building2, LayoutDashboard, FileText, BarChart2, Home,
   LogOut, Menu, X, CreditCard, Users, Sun, Moon, Search, IndianRupee,
-  Bell, MessageSquare, CheckCheck, UserCheck, Wrench, ClipboardList,
+  Bell, MessageSquare, CheckCheck, UserCheck, Wrench, ClipboardList, Settings,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getUnreadCount, listNotifications, markAllNotificationsRead, markNotificationRead } from '../services/notifications'
@@ -32,6 +32,7 @@ const NAV = {
     { to: '/owner/maintenance',  icon: Wrench,        label: 'Maintenance' },
     { to: '/owner/agreements',   icon: ClipboardList, label: 'Agreements' },
     { to: '/messages',           icon: MessageSquare, label: 'Messages' },
+    { to: '/settings/ocr',       icon: Settings,      label: 'OCR Settings' },
   ],
   manager: [
     { to: '/manager',                  icon: LayoutDashboard, label: 'Dashboard' },
@@ -42,6 +43,7 @@ const NAV = {
     { to: '/manager/agreements',       icon: ClipboardList,   label: 'Agreements' },
     { to: '/manager/analytics',        icon: BarChart2,       label: 'Analytics' },
     { to: '/messages',                 icon: MessageSquare,   label: 'Messages' },
+    { to: '/settings/ocr',             icon: Settings,        label: 'OCR Settings' },
   ],
 }
 
