@@ -47,7 +47,7 @@ if (WHAT === 'api') {
     ['POST', '/agreements', 'owner2', [403], { property_id: 1, start_date: '2026-01-01' }],                                          // property 1 is vikram's
     // ---- manager ----
     ['GET', '/reports/properties/pdf', 'manager', [200]], ['GET', '/reports/properties/excel', 'manager', [200]], ['GET', '/financial/rent-collection', 'manager', [200]],
-    ['GET', '/config/ocr', 'manager', [403]], ['PATCH', '/config/ocr', 'manager', [405], {}], ['PUT', '/config/ocr', 'manager', [405], {}],
+    ['GET', '/config/ocr', 'manager', [200]], ['PATCH', '/config/ocr', 'manager', [405], {}], ['PUT', '/config/ocr', 'manager', [200], { ocr_engine: 'auto' }],   // manager can view and change OCR config now (was Owner-only, read-only, before)
     ['POST', '/financial/payments', 'manager', [403], { amount: 5, payment_date: '2026-09-01', property_id: 1, payment_type: 'rent' }],
     ['GET', '/auth/users', 'manager', [200]], ['GET', '/agreements', 'manager', [200]], ['GET', '/service-providers', 'manager', [200]],
     ['GET', '/reports/financial/6/pdf', 'manager', [200]], ['GET', '/reports/financial/999999/pdf', 'manager', [404]],
