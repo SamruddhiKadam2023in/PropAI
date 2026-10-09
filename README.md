@@ -1,4 +1,4 @@
-# 🏠 PropAI — AI-Driven Financial Analytics for Property Management
+# 🏠 PropAI : AI-Driven Financial Analytics for Property Management
 
 > A full-stack intelligent property management platform combining OCR, NLP, KNN-based rent comparison, and expense forecasting.
 
@@ -14,7 +14,7 @@
 
 ## 📌 About the Project
 
-PropAI automates financial document processing, predicts rental market trends, and streamlines the complete tenant–owner–manager workflow. It supports three user roles — **Tenant**, **Owner**, and **Manager** — each with a dedicated dashboard and its own set of features.
+PropAI automates financial document processing, predicts rental market trends, and streamlines the complete tenant–owner–manager workflow. It supports three user roles **Tenant**, **Owner**, and **Manager** each with a dedicated dashboard and its own set of features.
 
 ---
 
@@ -39,9 +39,9 @@ PropAI automates financial document processing, predicts rental market trends, a
 - Dashboard with property info and payment history
 - Payments page: what's due this month, record a payment, transaction history with receipts
 - Rental agreement view, including any amount still owed after leaving early
-- Document upload — OCR reads English and Marathi bills, classifies the document, and extracts type, vendor, amount, bill date, due date, billing period, and address (PIN, suburb, city, state)
+- Document upload : OCR reads English and Marathi bills, classifies the document, and extracts type, vendor, amount, bill date, due date, billing period, and address (PIN, suburb, city, state)
 - Cost analysis with expense trends and next-month forecast — **filled automatically from uploaded utility bills** (electricity, water, gas)
-- **Find a Home** — search available properties and apply to rent
+- **Find a Home** : search available properties and apply to rent
 - Rental application status tracking (Pending / Approved / Rejected)
 - In-app notifications and messaging with the owner
 
