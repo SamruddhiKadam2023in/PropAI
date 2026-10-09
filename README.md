@@ -1,6 +1,12 @@
-# 🏠 PropAI : AI-Driven Financial Analytics for Property Management
+# 🏠 PropAI — AI-Driven Financial Analytics for Property Management
 
 > A full-stack intelligent property management platform combining OCR, NLP, KNN-based rent comparison, and expense forecasting.
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+![React](https://img.shields.io/badge/React_18-61DAFB?logo=react&logoColor=black)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
 
 **Repository:** [github.com/SamruddhiKadam2023in/PropAI](https://github.com/SamruddhiKadam2023in/PropAI)
 
@@ -29,16 +35,18 @@ PropAI automates financial document processing, predicts rental market trends, a
 ## ✨ Features by Role
 
 ### 🧑‍💼 Tenant
+
 - Dashboard with property info and payment history
 - Payments page: what's due this month, record a payment, transaction history with receipts
 - Rental agreement view, including any amount still owed after leaving early
-- Upload documents — OCR reads English and Marathi bills, classifies the document, and pulls out type, vendor, amount, bill date, due date, billing period, and address (PIN, suburb, city, state)
-- Cost analysis with expense trends and next-month forecast — **filled automatically from the utility bills you upload** (electricity, water, gas)
+- Document upload — OCR reads English and Marathi bills, classifies the document, and extracts type, vendor, amount, bill date, due date, billing period, and address (PIN, suburb, city, state)
+- Cost analysis with expense trends and next-month forecast — **filled automatically from uploaded utility bills** (electricity, water, gas)
 - **Find a Home** — search available properties and apply to rent
-- Track rental application status (Pending / Approved / Rejected)
-- In-app notifications and messaging with owner
+- Rental application status tracking (Pending / Approved / Rejected)
+- In-app notifications and messaging with the owner
 
 ### 🏢 Owner
+
 - Portfolio dashboard with occupancy rate and income summary
 - Add, edit, and manage properties
 - Review incoming rental applications and approve or reject them
@@ -49,6 +57,7 @@ PropAI automates financial document processing, predicts rental market trends, a
 - Agreements: record the rent and term for a tenant, and record a tenant leaving early
 
 ### 🛡️ Manager
+
 - Platform-wide dashboard with all users, properties, and rent stats
 - Manage users and assign roles
 - View and action all rental applications across all properties
@@ -60,13 +69,15 @@ PropAI automates financial document processing, predicts rental market trends, a
 
 ## 🔄 How the Rental Flow Works
 
-1. Tenant browses available properties and clicks **Apply to Rent**
-2. Owner receives a bell notification — *New Rental Application*
-3. Manager also receives the same notification
-4. Owner or Manager opens the Applications page
-5. They click **Approve** or **Reject**
-6. Tenant immediately receives a notification with the outcome
-7. On approval, the property is automatically marked as **Occupied**
+| Step | Action |
+|:---:|---|
+| 1 | Tenant browses available properties and clicks **Apply to Rent** |
+| 2 | Owner receives a bell notification — *New Rental Application* |
+| 3 | Manager receives the same notification |
+| 4 | Owner or Manager opens the **Applications** page |
+| 5 | They click **Approve** or **Reject** |
+| 6 | Tenant immediately receives a notification with the outcome |
+| 7 | On approval, the property is automatically marked as **Occupied** |
 
 ---
 
@@ -76,33 +87,33 @@ PropAI automates financial document processing, predicts rental market trends, a
 PropAI/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py          # Entry point, CORS, routers
-│   │   ├── config.py        # Settings and environment variables
-│   │   ├── database.py      # PostgreSQL, MongoDB, Redis connections
-│   │   ├── models/          # SQLAlchemy database models
-│   │   ├── schemas/         # Pydantic request and response schemas
-│   │   ├── routers/         # All API endpoints
-│   │   ├── ml/               # OCR pipeline, KNN, regression, NLP
+│   │   ├── main.py            # Entry point, CORS, routers
+│   │   ├── config.py          # Settings and environment variables
+│   │   ├── database.py        # PostgreSQL, MongoDB, Redis connections
+│   │   ├── models/            # SQLAlchemy database models
+│   │   ├── schemas/           # Pydantic request and response schemas
+│   │   ├── routers/           # All API endpoints
+│   │   ├── ml/                # OCR pipeline, KNN, regression, NLP
 │   │   ├── services/          # OCR service, report generation, listings
 │   │   └── utils/             # Auth helpers, cache, dependencies
-│   ├── seed.py               # Sample data loader (refuses to run when DEBUG=false)
-│   ├── create_manager.py     # Creates the first Manager on a live server
+│   ├── seed.py                # Sample data loader (refuses to run when DEBUG=false)
+│   ├── create_manager.py      # Creates the first Manager on a live server
 │   ├── requirements.txt
-│   ├── Dockerfile            # normal image (full bill reader)
-│   └── Dockerfile.free       # image for free 512 MB hosts (lite bill reader)
+│   ├── Dockerfile             # Normal image (full bill reader)
+│   └── Dockerfile.free        # Image for free 512 MB hosts (lite bill reader)
 ├── frontend/
 │   ├── src/
-│   │   ├── pages/            # Tenant, Owner, Manager dashboards
+│   │   ├── pages/             # Tenant, Owner, Manager dashboards
 │   │   ├── components/        # Layout, Charts, DocumentUpload
-│   │   ├── contexts/           # Auth and Theme state
-│   │   └── services/            # Axios API client
+│   │   ├── contexts/          # Auth and Theme state
+│   │   └── services/          # Axios API client
 │   ├── Dockerfile
 │   └── nginx.conf
-├── deploy/                   # Production setups and step-by-step guides (Oracle server, free hosts, Caddy)
-├── tests/                    # End-to-end API and browser tests (see tests/README.md)
-├── docker-compose.yml        # local demo stack
-├── render.yaml               # optional paid Render blueprint
-├── LICENSE                   # MIT
+├── deploy/                    # Production setups and guides (Oracle server, free hosts, Caddy)
+├── tests/                     # End-to-end API and browser tests (see tests/README.md)
+├── docker-compose.yml         # Local demo stack
+├── render.yaml                # Optional paid Render blueprint
+├── LICENSE                    # MIT
 └── README.md
 ```
 
@@ -110,48 +121,55 @@ PropAI/
 
 ## ⚙️ Requirements
 
-Before you begin, make sure you have the following installed on your machine:
+Make sure the following are installed on your machine:
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop)
 - [Git](https://git-scm.com/download/win)
 
 ---
 
-## 🚀 How to Clone and Run Locally
+## 🚀 Getting Started
 
 Follow these steps in order.
 
-**Step 1 — Clone the repository**
+**1. Clone the repository**
+
 ```bash
 git clone https://github.com/SamruddhiKadam2023in/PropAI.git
 ```
 
-**Step 2 — Go into the project folder**
+**2. Go into the project folder**
+
 ```bash
 cd PropAI
 ```
 
-**Step 3 — Start all services using Docker**
-*(First time will take 5 to 8 minutes to download and build everything)*
+**3. Start all services using Docker**
+
+> The first run takes 5–8 minutes to download and build everything.
+
 ```bash
 docker compose up --build -d
 ```
 
 This starts 5 services automatically:
+
 | Service | Address |
 |---|---|
 | Backend API | http://localhost:8000 |
 | Frontend app | http://localhost:3000 |
-| PostgreSQL database | port 5432 |
+| PostgreSQL | port 5432 |
 | MongoDB | port 27017 |
 | Redis | port 6379 |
 
-**Step 4 — Load sample data into the database**
+**4. Load sample data into the database**
+
 ```bash
 docker exec property_backend python seed.py
 ```
 
-**Step 5 — Open the app in your browser**
+**5. Open the app in your browser**
+
 ```
 http://localhost:3000
 ```
@@ -166,9 +184,9 @@ http://localhost:3000
 | Owner | vikram@propai.in | PropAI@2024 |
 | Manager | rajesh@propai.in | PropAI@2024 |
 
-You can also register a new **Tenant** or **Owner** account. Sign-up requires a one-time code emailed to you (see **Sign-in, sign-up and email codes** below). Manager accounts cannot be created via sign-up — an existing Manager adds them under **Users & Roles → Add user**.
+You can also register a new **Tenant** or **Owner** account. Sign-up requires a one-time code emailed to you (see [Sign-in, Sign-up and Email Codes](#-sign-in-sign-up-and-email-codes)). Manager accounts cannot be created via sign-up — an existing Manager adds them under **Users & Roles → Add user**.
 
-> ⚠️ These are demo/seed credentials for local development only replace or remove them entirely before any public/production deployment.
+> ⚠️ **Warning:** These are demo/seed credentials for local development only. Replace or remove them entirely before any public or production deployment.
 
 ---
 
@@ -187,12 +205,16 @@ You can also register a new **Tenant** or **Owner** account. Sign-up requires a 
 A sample environment file is provided at `backend/.env.example`. Copy it to `backend/.env` before running locally:
 
 ```bash
+# Windows
 copy backend\.env.example backend\.env
+
+# macOS / Linux
+cp backend/.env.example backend/.env
 ```
 
-The default values work with Docker out of the box — no changes needed for local development. To receive emailed one-time codes, you must add your mail settings (`SMTP_*`); see **Email setup** below.
+The default values work with Docker out of the box — no changes are needed for local development. To receive emailed one-time codes, add your mail settings (`SMTP_*`); see [Email Setup](#email-setup-gmail-example).
 
-For production, update these values:
+**For production, update these values:**
 
 | Variable | Purpose |
 |---|---|
@@ -208,53 +230,63 @@ For production, update these values:
 | `OCR_LITE_MODE` | `true` on tiny hosts (512 MB): lighter, safer bill reading (default `false`) |
 | `OCR_LANGUAGES` | Languages Tesseract reads, e.g. `eng+mar` (default) or `eng` |
 | `MIRROR_UPLOADS_TO_MONGO` | `true` on hosts whose disk is wiped on restart: keeps a copy of every upload in MongoDB |
-| `BOOTSTRAP_MANAGER_EMAIL` / `_NAME` / `_PASSWORD` | Creates the first Manager at start-up when no Manager exists (hosts with no terminal). Delete them after your first sign-in |
+| `BOOTSTRAP_MANAGER_EMAIL` / `_NAME` / `_PASSWORD` | Creates the first Manager at start-up when no Manager exists (for hosts with no terminal). Delete them after your first sign-in |
 
-The **Quick Demo Login** panel on the Login page is shown only when `frontend/.env` contains `VITE_SHOW_DEMO_LOGIN=true` (copy `frontend/.env.example` to `frontend/.env` for a local demo). **Public builds must not set it** — without it, the build contains no panel and no demo password.
+> The **Quick Demo Login** panel on the Login page is shown only when `frontend/.env` contains `VITE_SHOW_DEMO_LOGIN=true` (copy `frontend/.env.example` to `frontend/.env` for a local demo). **Public builds must not set it** — without it, the build contains no panel and no demo password.
 
 ---
 
-## 🔐 Sign-in, Sign-up, and Email Codes
+## 🔐 Sign-in, Sign-up and Email Codes
 
-- Sign-up (Tenant or Owner only) creates an unverified account and emails a 6-digit code. You're signed in only after entering it.
-- Codes last 10 minutes, work once, and lock after 5 wrong guesses. "Resend code" waits 60 seconds (max 5 per hour).
+- **Sign-up** (Tenant or Owner only) creates an unverified account and emails a 6-digit code. You're signed in only after entering it.
+- **Codes** last 10 minutes, work once, and lock after 5 wrong guesses. "Resend code" waits 60 seconds (max 5 per hour).
 - **Forgot password?** on the Login page emails a reset code the same way. A reset signs you out everywhere.
-- Passwords must be at least 8 characters (at most 72 bytes) — enforced on both the server and the forms.
-- 5 wrong passwords for the same email from the same address within a minute are blocked for the rest of that minute (HTTP 429).
-- Access tokens last 15 minutes and renew silently; the refresh token lasts 7 days, is replaced on every use, and is revoked by Sign Out, a password reset, or if an already-used one is presented again.
-- Managers create other accounts (including other Managers) at **Manager → Users & Roles → Add user**.
-- Everyone can open **Account settings** (click your name at the bottom of the sidebar) to edit their name and phone and to change their password. Changing the password signs out all other devices. Email and role can't be changed there.
-- Managers can deactivate and reactivate other accounts under **Users & Roles**. A deactivated person is signed out on their next action and cannot sign in until reactivated; their data is kept. A Manager cannot deactivate themselves.
+- **Passwords** must be at least 8 characters (at most 72 bytes) — enforced on both the server and the forms.
+- **Rate limiting:** 5 wrong passwords for the same email from the same address within a minute are blocked for the rest of that minute (HTTP 429).
+- **Tokens:** access tokens last 15 minutes and renew silently; the refresh token lasts 7 days, is replaced on every use, and is revoked by Sign Out, a password reset, or if an already-used one is presented again.
+- **Manager-created accounts:** Managers create other accounts (including other Managers) at **Manager → Users & Roles → Add user**.
+- **Account settings:** everyone can open it (click your name at the bottom of the sidebar) to edit their name and phone and to change their password. Changing the password signs out all other devices. Email and role can't be changed there.
+- **Deactivation:** Managers can deactivate and reactivate other accounts under **Users & Roles**. A deactivated person is signed out on their next action and cannot sign in until reactivated; their data is kept. A Manager cannot deactivate themselves.
 
 ### Email Setup (Gmail example)
 
-1. On the Gmail account, turn on 2-Step Verification, then create an App password at [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords) (it's 16 letters shown once — remove the spaces when you copy it).
-2. In `backend/.env` set:
-   ```
+1. On the Gmail account, turn on 2-Step Verification, then create an App password at [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords). It is 16 letters shown once — remove the spaces when you copy it.
+2. In `backend/.env`, set:
+
+   ```env
    SMTP_HOST=smtp.gmail.com
    SMTP_PORT=587
    SMTP_USERNAME=your.address@gmail.com
    SMTP_PASSWORD=<the 16 letters, no spaces>
    SMTP_FROM="PropAI <your.address@gmail.com>"
    ```
-3. Apply it:
+
+3. Apply the change:
+
    ```bash
    docker compose up -d --force-recreate backend
    ```
 
 **Hosts that block SMTP** (Render free, Hugging Face): set `BREVO_API_KEY` instead. Create a free [Brevo](https://www.brevo.com) account, verify your sender address, generate an API key, and set `SMTP_FROM` to `PropAI <your verified address>`. Codes are then sent over HTTPS.
 
-If neither `SMTP_HOST` nor `BREVO_API_KEY` is set, the server sends nothing and the sign-up screen says the code could not be sent. For development only, you can set `EMAIL_DEV_LOG_CODES=true` to print codes in the backend log (`docker compose logs backend`). **Never enable that in production.**
+If neither `SMTP_HOST` nor `BREVO_API_KEY` is set, the server sends nothing and the sign-up screen says the code could not be sent. For development only, you can set `EMAIL_DEV_LOG_CODES=true` to print codes in the backend log (`docker compose logs backend`).
+
+> ⚠️ **Never enable `EMAIL_DEV_LOG_CODES` in production.**
 
 ---
 
 ## 🧾 Reading Bills (English + Marathi)
 
-Uploaded bills are read in the background by `backend/app/ml/bill_pipeline.py`: Tesseract (English + Marathi) runs on several cleaned-up copies of the image, then rules identify the type, vendor, amount to pay, bill date, due date, billing period, and address (6-digit PIN checked against its state, suburb/city, with the name kept apart from the address).
+Uploaded bills are read in the background by `backend/app/ml/bill_pipeline.py`. Tesseract (English + Marathi) runs on several cleaned-up copies of the image, then rules identify:
 
-It stops as soon as it's confident, within 60 seconds. Anything it's unsure about is left **empty** (never guessed), and the document is marked **"flagged"** so the user can correct it. If the new reader finds nothing, the older pipeline is used as a fallback.
+- Type, vendor, and amount to pay
+- Bill date, due date, and billing period
+- Address (6-digit PIN checked against its state, suburb/city, with the name kept apart from the address)
 
-The Marathi language pack is installed in the backend image (`backend/Dockerfile`), so after pulling this change, run:
+The reader stops as soon as it is confident, within 60 seconds. Anything it is unsure about is left **empty** (never guessed), and the document is marked **"flagged"** so the user can correct it. If the new reader finds nothing, the older pipeline is used as a fallback.
+
+The Marathi language pack is installed in the backend image (`backend/Dockerfile`). After pulling this change, run:
+
 ```bash
 docker compose build backend
 docker compose up -d --force-recreate backend
@@ -262,44 +294,37 @@ docker compose up -d --force-recreate backend
 
 ### PDFs downloaded straight from a utility's website
 
-A PDF that already has a real, selectable text layer (most bills downloaded from a discom's portal or emailed as a receipt) is read from that text directly — no OCR, no misread digits, exact even in Marathi, and usually under a second. Only photographed or scanned PDFs go through Tesseract. A PDF whose text doesn't look like a bill at all (an unrelated document with a text layer) falls back to OCR on the rendered page, the same as before this existed.
+A PDF with a real, selectable text layer (most bills downloaded from a discom's portal or emailed as a receipt) is read from that text directly — no OCR, no misread digits, exact even in Marathi, and usually under a second. Only photographed or scanned PDFs go through Tesseract. A PDF whose text doesn't look like a bill at all (an unrelated document with a text layer) falls back to OCR on the rendered page.
 
 ### Lite mode (small free hosts)
 
-A free host with 512 MB of memory and a fraction of a CPU can't run the full reader (measured: it hits the memory limit and takes over 2 minutes per bill). Setting `OCR_LITE_MODE=true` (already set in `backend/Dockerfile.free`) reads one Tesseract pass at a time on a smaller picture, loads no spaCy model, and stops as soon as the essentials are read (about 260–290 MB peak, 10–80 seconds).
+A free host with 512 MB of memory and a fraction of a CPU can't run the full reader (measured: it hits the memory limit and takes over 2 minutes per bill). Setting `OCR_LITE_MODE=true` (already set in `backend/Dockerfile.free`):
 
-The trade-off is deliberate: lite mode only accepts an amount it saw **twice next to a label**. Otherwise the amount stays empty and the bill is marked "Needs review", so a wrong amount is never shown. Clear English bills read completely; Marathi bills usually give the address, dates, type and vendor, and the user types the amount once. Set `OCR_LANGUAGES=eng` to skip Marathi on a very slow host.
+- Reads one Tesseract pass at a time on a smaller picture
+- Loads no spaCy model
+- Stops as soon as the essentials are read (about 260–290 MB peak, 10–80 seconds)
+
+The trade-off is deliberate: lite mode only accepts an amount it saw **twice next to a label**. Otherwise the amount stays empty and the bill is marked "Needs review", so a wrong amount is never shown. Clear English bills read completely; Marathi bills usually give the address, dates, type, and vendor, and the user types the amount once. Set `OCR_LANGUAGES=eng` to skip Marathi on a very slow host.
 
 ### Bills feed the Cost Analysis
 
-When a bill finishes reading with a type (electricity, water or gas), an amount and a date, it becomes an **expense on the tenant's property**, so the charts and trends fill themselves. Correcting a bill's amount, date or type updates its expense; deleting the bill deletes it. A bill that still needs review creates no expense.
+When a bill finishes reading with a type (electricity, water, or gas), an amount, and a date, it becomes an **expense on the tenant's property**, so the charts and trends fill themselves.
 
-**Known limits:** very low-resolution photos are flagged instead of read; the place list in `backend/app/ml/india_places.py` covers major cities and suburbs and can be extended. The test bills in `tests/assets/bills/` are invented sample bills; never add a real person's bill to the repository.
+- Correcting a bill's amount, date, or type updates its expense.
+- Deleting the bill deletes its expense.
+- A bill that still needs review creates no expense.
 
----
+### Known limits
 
-## 🚢 Deploying for Free
-
-The local Docker setup is a **demo** (sample passwords, database ports open, debug on). For a real site there are two free setups, both with the website on **Vercel**:
-
-| Setup | API runs on | Databases | Needs a card? | Bill reading |
-|---|---|---|---|---|
-| **No card** — [`deploy/FREE_HOST.md`](deploy/FREE_HOST.md) | Render (or Koyeb) free web service, 512 MB | Neon (Postgres), MongoDB Atlas, Redis inside the container | No | **Lite mode**: safe but often leaves Marathi amounts for the user to confirm |
-| **Always-on server** — [`deploy/README.md`](deploy/README.md) | Oracle Cloud "Always Free" server, Docker Compose + Caddy (automatic HTTPS) + free DuckDNS address | Postgres, MongoDB, Redis in Docker | Yes (identity check only) | **Full mode**: reads Marathi and English bills completely |
-
-The free web hosts sleep after about 15 minutes idle (a free UptimeRobot monitor keeps them awake), wipe their disk on restart (uploads are mirrored into MongoDB and restored), and block the usual email ports (codes go through Brevo's web API). Key points:
-
-- The app **refuses to start** with `DEBUG=false` if `SECRET_KEY` is the placeholder or shorter than 32 characters.
-- Create your first Manager with `python create_manager.py` (or the `BOOTSTRAP_MANAGER_*` settings on hosts with no terminal) and **never run `seed.py` on a live server** (it deletes all data and refuses to run when `DEBUG=false`).
-- The public website build has **no demo-login panel and no demo password** (checked by an automated test).
-- Keep every secret (SMTP app password, `SECRET_KEY`, database passwords) only in the host's environment or `deploy/.env` — never in chat, git or screenshots. If one leaks, revoke it and create a new one.
-- Dependencies were upgraded for known security advisories; re-check with `pip-audit` (backend) and `npm audit --omit=dev` (frontend).
+- Very low-resolution photos are flagged instead of read.
+- The place list in `backend/app/ml/india_places.py` covers major cities and suburbs and can be extended.
+- The test bills in `tests/assets/bills/` are invented samples. **Never add a real person's bill to the repository.**
 
 ---
 
 ## 🧪 Running the Tests
 
-Real end-to-end tests (API + real browser) live in the `tests/` folder — about 31 suites and 1,240 checks covering sign-in, agreements and payments, bill reading, hosting features, exports and every page. See `tests/README.md`.
+Real end-to-end tests (API + real browser) live in the `tests/` folder — about 31 suites and 1,240 checks covering sign-in, agreements and payments, bill reading, hosting features, exports, and every page. See `tests/README.md`.
 
 ```bash
 pip install -r tests/requirements.txt
@@ -322,7 +347,7 @@ Once the backend is running, open either of these in your browser:
 
 ## 📄 License
 
-Released under the **MIT License** — see [`LICENSE`](LICENSE). You may use, modify and distribute it, keeping the copyright notice.
+Released under the **MIT License** — see [`LICENSE`](LICENSE). You may use, modify, and distribute it, keeping the copyright notice.
 
 ---
 
