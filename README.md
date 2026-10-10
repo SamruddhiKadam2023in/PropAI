@@ -39,9 +39,9 @@ PropAI automates financial document processing, predicts rental market trends, a
 - Dashboard with property info and payment history
 - Payments page: what's due this month, record a payment, transaction history with receipts
 - Rental agreement view, including any amount still owed after leaving early
-- Document upload : OCR reads English and Marathi bills, classifies the document, and extracts type, vendor, amount, bill date, due date, billing period, and address (PIN, suburb, city, state)
+- Document upload — OCR reads English and Marathi bills, classifies the document, and extracts type, vendor, amount, bill date, due date, billing period, and address (PIN, suburb, city, state)
 - Cost analysis with expense trends and next-month forecast — **filled automatically from uploaded utility bills** (electricity, water, gas)
-- **Find a Home** : search available properties and apply to rent
+- **Find a Home**: search available properties and apply to rent
 - Rental application status tracking (Pending / Approved / Rejected)
 - In-app notifications and messaging with the owner
 
@@ -58,7 +58,7 @@ PropAI automates financial document processing, predicts rental market trends, a
 
 ### 🛡️ Manager
 
-- Platform-wide dashboard with all users, properties, and rent stats
+- Platform wide dashboard with all users, properties, and rent stats
 - Manage users and assign roles
 - View and action all rental applications across all properties
 - Rent collection tracker (by month or date range)
@@ -321,6 +321,140 @@ When a bill finishes reading with a type (electricity, water, or gas), an amount
 - The test bills in `tests/assets/bills/` are invented samples. **Never add a real person's bill to the repository.**
 
 ---
+
+## 🚢 Deployment
+
+PropAI is deployed on a **free, no-card stack**: **Vercel** (website) + **Render** (API) + **Neon** (PostgreSQL), with MongoDB Atlas, Redis (inside the API container), and Brevo for email.
+
+### Architecture
+
+```mermaid
+flowchart LR
+    U[User browser] -->|HTTPS| V[Vercel<br/>React + Vite frontend]
+    V -->|REST API + JWT| R[Render<br/>FastAPI in Docker<br/>Dockerfile.free]
+    R --> N[(Neon<br/>PostgreSQL)]
+    R --> M[(MongoDB Atlas<br/>uploads + mirror)]
+    R --> RD[(Redis<br/>inside container)]
+    R -->|HTTPS| B[Brevo API<br/>OTP emails]
+    UP[UptimeRobot] -.->|ping every 5 min| R
+```
+
+### Services Used
+
+| Component | Service | Role | Plan |
+|---|---|---|---|
+| Frontend | **Vercel** | Hosts the React/Vite website | Free |
+| Backend API | **Render** | Runs FastAPI via `backend/Dockerfile.free` (512 MB, lite OCR) | Free web service |
+| PostgreSQL | **Neon** | Users, properties, payments, agreements | Free |
+| MongoDB | **MongoDB Atlas** | Document store and upload mirror | Free (M0) |
+| Redis | In-container | Cache and rate limiting | — |
+| Email | **Brevo** (web API) | Sign-up and reset codes (Render free blocks SMTP) | Free |
+| Keep-alive | **UptimeRobot** | Stops the free API from sleeping | Free |
+
+### Step 1 — Create the PostgreSQL database (Neon)
+
+1. Create a new Neon project and database.
+2. Copy the **connection string** and make sure it ends with `?sslmode=require`.
+3. Keep it for the `DATABASE_URL` variable (Step 3). Use the same URL format shown in `backend/.env.example`.
+
+### Step 2 — Create the MongoDB database (Atlas)
+
+1. Create a free **M0** cluster and a database user (username and password).
+2. Under **Network Access**, allow `0.0.0.0/0` (Render's free tier has no fixed outbound IP).
+3. Copy the connection string for `MONGODB_URL`.
+
+### Step 3 — Deploy the API (Render)
+
+1. In Render, choose **New → Web Service** and connect the GitHub repo.
+2. Configure:
+
+   | Setting | Value |
+   |---|---|
+   | Runtime | Docker |
+   | Root directory | `backend` |
+   | Dockerfile path | `Dockerfile.free` |
+   | Instance type | Free |
+
+3. Add these **environment variables**:
+
+   | Variable | Value |
+   |---|---|
+   | `DATABASE_URL` | Neon connection string (Step 1) |
+   | `MONGODB_URL` | Atlas connection string (Step 2) |
+   | `REDIS_URL` | Leave at the default — Redis runs inside the container |
+   | `SECRET_KEY` | Random string, 32+ characters |
+   | `DEBUG` | `false` |
+   | `FRONTEND_URL` | Your Vercel URL (set it after Step 5, then redeploy) |
+   | `BREVO_API_KEY` | From Step 4 |
+   | `SMTP_FROM` | `PropAI <your verified Brevo sender>` |
+   | `OCR_LITE_MODE` | `true` (already set in `Dockerfile.free`) |
+   | `MIRROR_UPLOADS_TO_MONGO` | `true` (Render's disk is wiped on restart) |
+   | `BOOTSTRAP_MANAGER_EMAIL` / `_NAME` / `_PASSWORD` | Creates the first Manager (Step 6) |
+
+4. Deploy. When the build finishes, open `https://<your-service>.onrender.com/docs` to confirm the API is up.
+
+> ℹ️ The app **refuses to start** with `DEBUG=false` if `SECRET_KEY` is the placeholder or under 32 characters.
+
+### Step 4 — Set up email (Brevo)
+
+1. Create a free Brevo account and **verify your sender address**.
+2. Generate an **API key** and add it to Render as `BREVO_API_KEY`.
+3. Set `SMTP_FROM` to `PropAI <your verified address>`. Codes are sent over HTTPS, so Render's blocked SMTP ports don't matter.
+
+### Step 5 — Deploy the website (Vercel)
+
+1. In Vercel, choose **Add New → Project** and import the same GitHub repo.
+2. Configure:
+
+   | Setting | Value |
+   |---|---|
+   | Framework preset | Vite |
+   | Root directory | `frontend` |
+   | Build command | `npm run build` |
+   | Output directory | `dist` |
+
+3. Add the environment variable that points the frontend at your API (the Render URL, e.g. `https://<your-service>.onrender.com`). Check `frontend/.env.example` for the exact variable name.
+4. **Do not set `VITE_SHOW_DEMO_LOGIN`** — public builds must contain no demo-login panel or demo password.
+5. Deploy, then copy the Vercel URL back into Render's `FRONTEND_URL` and redeploy the API so CORS allows the site.
+
+### Step 6 — Create the first Manager
+
+- **No terminal on Render free:** use the `BOOTSTRAP_MANAGER_EMAIL`, `_NAME`, and `_PASSWORD` variables. The Manager is created at start-up when none exists. Sign in once, then **delete these three variables**.
+- **With a terminal:** run `python create_manager.py`.
+- ❌ **Never run `seed.py` on a live server** — it deletes all data (it refuses to run when `DEBUG=false`).
+
+### Step 7 — Keep the free API awake
+
+Render's free web service sleeps after about 15 minutes idle. Add an **UptimeRobot** HTTP monitor pointing at `https://<your-service>.onrender.com/docs` with a 5-minute interval.
+
+### Step 8 — Verify the deployment
+
+| Check | Expected result |
+|---|---|
+| `https://<api>/docs` | Swagger UI loads |
+| Open the Vercel site | Login page, no demo-login panel |
+| Sign up as Tenant/Owner | 6-digit code arrives by email |
+| Sign in as the Manager | Dashboard loads |
+| Upload an English bill (Tenant) | Fields extracted, or marked "Needs review" |
+
+### Redeploying / Updating
+
+| Part | How |
+|---|---|
+| Frontend | Push to GitHub — Vercel rebuilds automatically |
+| Backend | Push to GitHub — Render rebuilds automatically (or use **Manual Deploy**) |
+| Env var change | Edit in the Render/Vercel dashboard and redeploy |
+
+### Troubleshooting
+
+| Problem | Likely cause and fix |
+|---|---|
+| API won't start | `SECRET_KEY` is placeholder or under 32 chars while `DEBUG=false` |
+| Browser shows CORS errors | `FRONTEND_URL` on Render doesn't exactly match the Vercel URL |
+| Frontend can't reach the API | The API URL variable on Vercel is missing or wrong — rebuild after fixing |
+| No sign-up code email | `BREVO_API_KEY` missing, or sender not verified in Brevo |
+| Database connection error | Neon URL missing `sslmode=require`, or Atlas network access not open |
+| Very slow first load | Free API was asleep — add or check the UptimeRobot monitor |
 
 ## 🧪 Running the Tests
 
