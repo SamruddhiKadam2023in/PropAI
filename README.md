@@ -1,4 +1,4 @@
-# 🏠 PropAI : AI-Driven Financial Analytics for Property Management
+# 🏠 PropAI — AI-Driven Financial Analytics for Property Management
 
 > A full-stack intelligent property management platform combining OCR, NLP, KNN-based rent comparison, and expense forecasting.
 
@@ -14,7 +14,7 @@
 
 ## 📌 About the Project
 
-PropAI automates financial document processing, predicts rental market trends, and streamlines the complete tenant–owner–manager workflow. It supports three user roles **Tenant**, **Owner**, and **Manager** each with a dedicated dashboard and its own set of features.
+PropAI automates financial document processing, predicts rental market trends, and streamlines the complete tenant owner manager workflow. It supports three user roles **Tenant**, **Owner**, and **Manager** each with a dedicated dashboard and its own set of features.
 
 ---
 
@@ -39,9 +39,9 @@ PropAI automates financial document processing, predicts rental market trends, a
 - Dashboard with property info and payment history
 - Payments page: what's due this month, record a payment, transaction history with receipts
 - Rental agreement view, including any amount still owed after leaving early
-- Document upload — OCR reads English and Marathi bills, classifies the document, and extracts type, vendor, amount, bill date, due date, billing period, and address (PIN, suburb, city, state)
+- Document upload : OCR reads English and Marathi bills, classifies the document, and extracts type, vendor, amount, bill date, due date, billing period, and address (PIN, suburb, city, state)
 - Cost analysis with expense trends and next-month forecast — **filled automatically from uploaded utility bills** (electricity, water, gas)
-- **Find a Home**: search available properties and apply to rent
+- **Find a Home** : search available properties and apply to rent
 - Rental application status tracking (Pending / Approved / Rejected)
 - In-app notifications and messaging with the owner
 
@@ -58,7 +58,7 @@ PropAI automates financial document processing, predicts rental market trends, a
 
 ### 🛡️ Manager
 
-- Platform wide dashboard with all users, properties, and rent stats
+- Platform-wide dashboard with all users, properties, and rent stats
 - Manage users and assign roles
 - View and action all rental applications across all properties
 - Rent collection tracker (by month or date range)
@@ -72,7 +72,7 @@ PropAI automates financial document processing, predicts rental market trends, a
 | Step | Action |
 |:---:|---|
 | 1 | Tenant browses available properties and clicks **Apply to Rent** |
-| 2 | Owner receives a bell notification — *New Rental Application* |
+| 2 | Owner receives a bell notification *New Rental Application* |
 | 3 | Manager receives the same notification |
 | 4 | Owner or Manager opens the **Applications** page |
 | 5 | They click **Approve** or **Reject** |
@@ -351,6 +351,16 @@ flowchart LR
 | Email | **Brevo** (web API) | Sign-up and reset codes (Render free blocks SMTP) | Free |
 | Keep-alive | **UptimeRobot** | Stops the free API from sleeping | Free |
 
+### Prerequisites
+
+- GitHub repository with the project pushed
+- Free accounts on [Neon](https://neon.tech), [MongoDB Atlas](https://www.mongodb.com/atlas), [Render](https://render.com), [Vercel](https://vercel.com), [Brevo](https://www.brevo.com), and [UptimeRobot](https://uptimerobot.com)
+- A long random secret for `SECRET_KEY` (32+ characters), e.g.:
+
+  ```bash
+  python -c "import secrets; print(secrets.token_urlsafe(48))"
+  ```
+
 ### Step 1 — Create the PostgreSQL database (Neon)
 
 1. Create a new Neon project and database.
@@ -437,6 +447,15 @@ Render's free web service sleeps after about 15 minutes idle. Add an **UptimeRob
 | Sign in as the Manager | Dashboard loads |
 | Upload an English bill (Tenant) | Fields extracted, or marked "Needs review" |
 
+### Free-Tier Behaviour
+
+| Behaviour | What to expect |
+|---|---|
+| Idle sleep | API sleeps after ~15 min idle; first request can be slow (UptimeRobot mitigates this) |
+| Disk wipe | Uploads are mirrored to MongoDB and restored on restart |
+| Email | SMTP ports blocked; codes go through Brevo's web API |
+| Bill reading | **Lite mode** — an amount is accepted only if seen twice next to a label; otherwise left empty and flagged. Marathi amounts often need one manual confirmation |
+
 ### Redeploying / Updating
 
 | Part | How |
@@ -456,6 +475,21 @@ Render's free web service sleeps after about 15 minutes idle. Add an **UptimeRob
 | Database connection error | Neon URL missing `sslmode=require`, or Atlas network access not open |
 | Very slow first load | Free API was asleep — add or check the UptimeRobot monitor |
 
+### Security Checklist
+
+- [ ] `DEBUG=false` and a strong `SECRET_KEY`
+- [ ] No demo-login panel in the public build
+- [ ] `BOOTSTRAP_MANAGER_*` variables deleted after first sign-in
+- [ ] Secrets only in Render/Vercel environment settings — never in git, chat, or screenshots
+- [ ] If a secret leaks: revoke it and create a new one
+- [ ] Re-run `pip-audit` (backend) and `npm audit --omit=dev` (frontend) after dependency changes
+
+### Alternative: Always-On Server (Oracle Cloud)
+
+For full-mode bill reading (complete Marathi + English) and no sleeping, use the Oracle Cloud "Always Free" server with Docker Compose, Caddy (automatic HTTPS), and a free DuckDNS address. This needs a card for an identity check only. Guide: [`deploy/README.md`](deploy/README.md). The no-card guide is in [`deploy/FREE_HOST.md`](deploy/FREE_HOST.md).
+
+---
+
 ## 🧪 Running the Tests
 
 Real end-to-end tests (API + real browser) live in the `tests/` folder — about 31 suites and 1,240 checks covering sign-in, agreements and payments, bill reading, hosting features, exports, and every page. See `tests/README.md`.
@@ -465,6 +499,15 @@ pip install -r tests/requirements.txt
 cd tests && npm install && cd ..
 python tests/run_all.py
 ```
+
+### Hosting feature tests
+
+| Test file | What it covers |
+|---|---|
+| `api/hosting_unit.py` | Runs inside the backend container. Covers Neon-style database addresses, the MongoDB copy of uploaded files, the first-Manager bootstrap, and email over HTTPS (against a fake Brevo server) |
+| `api/file_mirror_tests.py` | Proves an uploaded bill survives the disk being wiped and the API restarting |
+
+Test mode turns the file copy on; `run_all.py` empties it afterwards.
 
 ---
 
